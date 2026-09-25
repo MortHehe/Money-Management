@@ -1,0 +1,164 @@
+/* Ukuran baca dan target sentuh untuk pengguna yang lebih nyaman dengan tulisan besar. */
+.nav-item {
+  font-size: 15px;
+}
+.panel-heading h2 {
+  font-size: 17px;
+}
+.panel-heading p,
+.metric-caption,
+.balance-caption {
+  font-size: 12px;
+}
+.table-toolbar > select,
+.search-field input {
+  font-size: 14px;
+}
+.table-toolbar > select {
+  width: 175px;
+}
+th,
+.date-cell {
+  font-size: 13px;
+}
+td,
+.money-cell,
+.description-cell strong {
+  font-size: 14px;
+}
+.description-cell {
+  min-width: 200px;
+}
+.description-cell small {
+  font-size: 12px;
+  color: #687460;
+}
+.date-cell,
+th,
+.metric-caption {
+  color: #65725e;
+}
+.row-actions .icon-button {
+  width: 40px;
+  height: 44px;
+}
+.table-footer {
+  font-size: 12px;
+}
+.month-balance-note {
+  font-size: 12px;
+}
+.category-panel .panel-heading h2 {
+  font-size: 16px;
+}
+.category-panel .panel-heading p {
+  font-size: 12px;
+}
+.category-item,
+.category-item strong {
+  font-size: 13px;
+}
+.category-item small {
+  font-size: 11px;
+}
+.category-total > span,
+.category-tip p {
+  font-size: 12px;
+}
+.category-item small,
+.category-total > span {
+  color: #67745f;
+}
+.month-picker select {
+  font-size: 13px;
+}
+.month-picker .icon-button {
+  min-height: 42px;
+}
+.card-label {
+  font-size: 14px;
+}
+.metric-caption {
+  line-height: 1.8;
+}
+
+@media (min-width: 761px) and (max-width: 1650px) {
+  .ledger-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ledger-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .mobile-navigation button {
+    font-size: 14px;
+  }
+  .metric-card .card-label {
+    font-size: 13px;
+  }
+  .metric-caption {
+    font-size: 11px;
+  }
+  .table-toolbar > select {
+    font-size: 15px;
+  }
+  .search-field input {
+    font-size: 16px;
+  }
+  .transaction-card-info > strong {
+    font-size: 16px;
+  }
+  .transaction-card-top > strong {
+    font-size: 15px;
+  }
+  .transaction-card-info > span {
+    font-size: 12px;
+    color: #67745f;
+  }
+  .transaction-card-bottom > span {
+    font-size: 12px;
+    color: #69755f;
+  }
+  .transaction-card-bottom .text-action {
+    font-size: 14px;
+  }
+  .category-item,
+  .category-item strong {
+    font-size: 14px;
+  }
+  .month-picker select {
+    font-size: 12px;
+  }
+  .entry-buttons .button {
+    font-size: 15px;
+  }
+  .transaction-card-top {
+    flex-wrap: wrap;
+  }
+  .transaction-card-info {
+    min-width: 150px;
+  }
+  .transaction-card-top > strong {
+    flex-basis: 100%;
+    max-width: 100%;
+    padding-left: 46px;
+    text-align: left;
+  }
+}
+
+@media (max-width: 370px) {
+  .transaction-card-top > strong {
+    padding-left: 0;
+  }
+  .mobile-navigation {
+    gap: 5px;
+  }
+  .metric-card .card-label {
+    font-size: 12px;
+  }
+}
