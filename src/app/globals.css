@@ -500,6 +500,24 @@ input[type="date"] {
   font-size: 16px;
   font-weight: 650;
 }
+.period-label {
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--green-light);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.period-filter {
+  flex-wrap: wrap;
+}
+.monthly-section {
+  margin-top: 25px;
+}
+.monthly-section .reports-grid {
+  margin-top: 0;
+}
 .month-picker {
   display: flex;
   gap: 1px;

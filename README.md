@@ -6,6 +6,7 @@ Buku kas keluarga berbahasa Indonesia. Tampilan mengutamakan HP; laptop menampil
 
 - Uang masuk/keluar, kategori, tanggal, keterangan, ubah, dan hapus dengan konfirmasi.
 - Saldo awal, saldo keseluruhan, saldo berjalan, dan saldo awal/akhir tiap bulan.
+- **Sekilas keuangan** menampilkan saldo, total uang masuk, dan total uang keluar untuk seluruh periode. Pilihan bulan berada pada bagian riwayat/laporan dan tidak mengubah angka ringkasan keseluruhan.
 - Pencarian, filter jenis transaksi, pilihan bulan, dan halaman riwayat.
 - Tab **Table View**: seluruh transaksi dari semua bulan dan tahun dalam satu tabel, dengan kolom Tanggal, Keterangan, Debit (uang masuk), Kredit (uang keluar), total keseluruhan, serta **Sisa uang** di bawah tabel. Urutan tanggal paling awal; semua baris langsung tersedia dengan menggulir tabel, tanpa filter bulan atau pembagian halaman.
 - Laporan enam bulan dan rincian pengeluaran menurut kategori.
@@ -132,7 +133,8 @@ Fungsi dipisahkan dengan baris kosong. Nama fungsi menjelaskan tugasnya; komenta
 - Nominal disimpan sebagai **integer rupiah** di kolom PostgreSQL `bigint`; tidak menggunakan pecahan floating point untuk uang.
 - Nominal per transaksi maksimal Rp999.999.999.999; versi awal dibatasi 5.000 transaksi per akun. Batas ini menjaga keseluruhan perhitungan tetap berada dalam rentang integer aman JavaScript dan menjaga beban pengambilan data. Untuk kebutuhan lebih besar, tambahkan pagination/aggregasi di server dan strategi angka besar sebelum menaikkan batas.
 - Saldo awal adalah uang sebelum transaksi pertama yang dicatat. Saldo awal bulan = saldo awal buku + semua transaksi sebelum bulan tersebut.
-- Sisa uang pada Table View = saldo awal buku kas + seluruh debit − seluruh kredit. Buku kosong tetap menampilkan saldo awal; saldo negatif ditampilkan apa adanya. Pilihan bulan di Buku kas dan Laporan tidak membatasi data Table View.
+- Table View mengenali transaksi pemasukan berketerangan tepat **Saldo awal** (huruf besar/kecil dan spasi diabaikan). Ringkasan bawah menggabungkannya dengan saldo awal dari Pengaturan dan memisahkan pemasukan lainnya. Transaksi tetap ada di kolom debit, tetapi tidak ditambahkan dua kali: **sisa uang = saldo awal yang ditampilkan + pemasukan lainnya − pengeluaran**. Data asli, total debit, saldo berjalan, dan ringkasan bulanan tidak diubah. Catat dana yang sama melalui Pengaturan atau transaksi, jangan keduanya.
+- Buku kosong tetap menampilkan saldo awal; saldo negatif ditampilkan apa adanya. Pilihan bulan di Buku kas dan Laporan tidak membatasi data Table View.
 - Urutan saldo berjalan: tanggal, waktu pembuatan, lalu ID. Riwayat menampilkan transaksi terbaru terlebih dahulu. Pencarian/filter tidak mengubah nilai saldo historis.
 - Waktu default menggunakan **WIB (Asia/Jakarta)**. Tanggal transaksi disimpan sebagai `date` agar tidak bergeser antarperangkat.
 - Penulisan mengunci satu buku kas dan memeriksa `revision` di dalam transaksi PostgreSQL. Jika perangkat lain sudah mengubah data, pengguna diminta memuat ulang.

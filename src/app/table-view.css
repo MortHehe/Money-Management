@@ -111,6 +111,30 @@
   font-size: 15px;
 }
 
+.cash-table-opening-note {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.cash-table-breakdown {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  font-size: 15px;
+}
+
+.cash-table-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+}
+
+.cash-table-breakdown dd {
+  margin: 0;
+  font-weight: 700;
+}
+
 .cash-table-remaining {
   display: flex;
   align-items: center;

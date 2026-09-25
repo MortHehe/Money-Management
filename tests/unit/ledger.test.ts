@@ -6,6 +6,7 @@ import {
   currentBalance,
   summarizeBook,
   summarizeMonth,
+  summarizeTable,
 } from "../../src/lib/ledger";
 import { backupSchema, transactionInputSchema } from "../../src/lib/validation";
 import { createBackup, createCsv, parseBackup } from "../../src/lib/backup";
@@ -72,6 +73,92 @@ test("saldo bulan berikutnya membawa saldo lama, meski array transaksi tidak ber
     buildLedger(fixture()).map((row) => row.balance),
     [600_000, 525_000],
   );
+});
+
+test("saldo awal dalam debit terbaca pada ringkasan tabel tanpa menggandakan sisa uang", () => {
+  const data = fixture();
+  data.settings.openingBalance = 0;
+  data.transactions = [
+    { ...income, description: "Saldo awal", amount: 301_000_000 },
+    { ...expense, amount: 131_657_500 },
+    { ...income, id: "10000000-0000-4000-8000-000000000003", amount: 4_000_000 },
+  ];
+  const original = structuredClone(data);
+  const summary = summarizeTable(data);
+
+  assert.equal(summary.openingTotal, 301_000_000);
+  assert.equal(summary.otherIncome, 4_000_000);
+  assert.equal(summary.income, 305_000_000);
+  assert.equal(summary.closing, 173_342_500);
+  assert.equal(
+    summary.openingTotal + summary.otherIncome - summary.expense,
+    summary.closing,
+  );
+  assert.equal(summary.closing, currentBalance(data));
+  assert.equal(summary.closing, buildLedger(data).at(-1)?.balance);
+  assert.deepEqual(data, original);
+});
+
+test("pengelompokan saldo awal menerima variasi spasi dan huruf, tetapi tidak keterangan mirip atau pengeluaran", () => {
+  const data = fixture();
+  data.transactions = [
+    { ...income, description: "  SALDO   Awal  ", amount: 500_000 },
+    {
+      ...income,
+      id: "10000000-0000-4000-8000-000000000003",
+      description: "saldo awal",
+      amount: 50_000,
+    },
+    {
+      ...income,
+      id: "10000000-0000-4000-8000-000000000004",
+      description: "Tambahan saldo awal",
+      amount: 20_000,
+    },
+    { ...expense, description: "Saldo awal", amount: 75_000 },
+  ];
+  const summary = summarizeTable(data);
+
+  assert.equal(summary.opening, 100_000);
+  assert.equal(summary.openingFromTransactions, 550_000);
+  assert.equal(summary.openingTotal, 650_000);
+  assert.equal(summary.otherIncome, 20_000);
+  assert.equal(summary.expense, 75_000);
+  assert.equal(summary.closing, 595_000);
+  assert.equal(
+    summary.openingTotal + summary.otherIncome - summary.expense,
+    summary.closing,
+  );
+
+  const settingsOnly = summarizeTable(fixture());
+  assert.equal(settingsOnly.openingTotal, 100_000);
+  assert.equal(settingsOnly.openingFromTransactions, 0);
+  assert.equal(settingsOnly.otherIncome, 500_000);
+  assert.equal(summarizeTable({ ...data, transactions: [] }).closing, 100_000);
+});
+
+test("perubahan nominal, keterangan, dan penghapusan transaksi saldo awal langsung memperbarui ringkasan", () => {
+  const data = fixture();
+  const updated = applyDemoMutation(data, {
+    type: "update",
+    transaction: { ...income, description: "Saldo awal", amount: 800_000 },
+  });
+  assert.equal(summarizeTable(updated).openingTotal, 900_000);
+  assert.equal(summarizeTable(updated).otherIncome, 0);
+  assert.equal(summarizeTable(updated).closing, 825_000);
+
+  const renamed = applyDemoMutation(updated, {
+    type: "update",
+    transaction: { ...income, description: "Tambahan dana", amount: 800_000 },
+  });
+  assert.equal(summarizeTable(renamed).openingTotal, 100_000);
+  assert.equal(summarizeTable(renamed).otherIncome, 800_000);
+  assert.equal(summarizeTable(renamed).closing, 825_000);
+
+  const deleted = applyDemoMutation(updated, { type: "delete", id: income.id });
+  assert.equal(summarizeTable(deleted).openingTotal, 100_000);
+  assert.equal(summarizeTable(deleted).otherIncome, 0);
+  assert.equal(summarizeTable(deleted).closing, 25_000);
 });
 
 test("mengubah transaksi lama menghitung ulang semua saldo sesudahnya", () => {

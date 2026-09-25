@@ -1,10 +1,10 @@
 import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
-import { currentBalance, summarizeMonth } from "@/lib/ledger";
-import { formatMoney, formatMonth } from "@/lib/format";
+import { summarizeBook } from "@/lib/ledger";
+import { formatMoney } from "@/lib/format";
 import type { BookData } from "@/lib/types";
 
-export function SummaryCards({ data, month }: { data: BookData; month: string }) {
-  const summary = summarizeMonth(data, month);
+export function SummaryCards({ data }: { data: BookData }) {
+  const summary = summarizeBook(data);
 
   return (
     <section className="summary-grid" aria-label="Ringkasan keuangan">
@@ -14,7 +14,7 @@ export function SummaryCards({ data, month }: { data: BookData; month: string })
           <Wallet size={21} />
         </div>
         <strong className="summary-amount" data-testid="total-balance">
-          {formatMoney(currentBalance(data))}
+          {formatMoney(summary.closing)}
         </strong>
         <div className="balance-caption">
           <span className="status-dot" />
@@ -29,10 +29,10 @@ export function SummaryCards({ data, month }: { data: BookData; month: string })
             <ArrowDownLeft size={21} />
           </span>
         </div>
-        <strong className="summary-amount income-text">
+        <strong className="summary-amount income-text" data-testid="total-income">
           {formatMoney(summary.income)}
         </strong>
-        <span className="metric-caption">Selama {formatMonth(month).toLowerCase()}</span>
+        <span className="metric-caption">Seluruh transaksi</span>
       </article>
       <article className="metric-card">
         <div className="card-label">
@@ -41,10 +41,10 @@ export function SummaryCards({ data, month }: { data: BookData; month: string })
             <ArrowUpRight size={21} />
           </span>
         </div>
-        <strong className="summary-amount expense-text">
+        <strong className="summary-amount expense-text" data-testid="total-expense">
           {formatMoney(summary.expense)}
         </strong>
-        <span className="metric-caption">Selama {formatMonth(month).toLowerCase()}</span>
+        <span className="metric-caption">Seluruh transaksi</span>
       </article>
     </section>
   );

@@ -183,17 +183,13 @@ export function Dashboard({
         </div>
       )}
       {(screen === "ledger" || screen === "reports") && (
-        <>
+        <section aria-labelledby="overview-title">
           <div className="section-topline">
-            <h2>{screen === "ledger" ? "Sekilas keuangan" : "Laporan bulanan"}</h2>
-            <MonthPicker
-              month={month}
-              onChange={setMonth}
-              transactions={data.transactions}
-            />
+            <h2 id="overview-title">Sekilas keuangan</h2>
+            <span className="period-label">Semua periode</span>
           </div>
-          <SummaryCards data={data} month={month} />
-        </>
+          <SummaryCards data={data} />
+        </section>
       )}
       {screen === "ledger" && (
         <>
@@ -220,6 +216,14 @@ export function Dashboard({
                 Uang keluar
               </button>
             </div>
+          </div>
+          <div className="section-topline period-filter">
+            <h2>Riwayat bulanan</h2>
+            <MonthPicker
+              month={month}
+              onChange={setMonth}
+              transactions={data.transactions}
+            />
           </div>
           <div className="ledger-layout">
             <div>
@@ -258,7 +262,19 @@ export function Dashboard({
         </>
       )}
       {screen === "table" && <TableView data={data} />}
-      {screen === "reports" && <ReportsPanel data={data} month={month} />}
+      {screen === "reports" && (
+        <section className="monthly-section" aria-labelledby="monthly-report-title">
+          <div className="section-topline period-filter">
+            <h2 id="monthly-report-title">Laporan bulanan</h2>
+            <MonthPicker
+              month={month}
+              onChange={setMonth}
+              transactions={data.transactions}
+            />
+          </div>
+          <ReportsPanel data={data} month={month} />
+        </section>
+      )}
       {screen === "settings" && (
         <SettingsPanel
           key={data.revision}

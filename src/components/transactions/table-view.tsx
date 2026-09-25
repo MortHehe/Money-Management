@@ -1,6 +1,6 @@
 import { Wallet } from "lucide-react";
 import { formatMoney, formatNumber, formatTableDate } from "@/lib/format";
-import { compareTransactions, summarizeBook } from "@/lib/ledger";
+import { compareTransactions, summarizeTable } from "@/lib/ledger";
 import type { BookData } from "@/lib/types";
 
 interface TableViewProps {
@@ -10,7 +10,9 @@ interface TableViewProps {
 export function TableView({ data }: TableViewProps) {
   // Salin sebelum mengurutkan agar urutan data bersama di Buku kas tetap utuh.
   const rows = [...data.transactions].sort(compareTransactions);
-  const summary = summarizeBook(data);
+  const summary = summarizeTable(data);
+  const hasOpeningTransaction = summary.openingFromTransactions > 0;
+  const incomeLabel = hasOpeningTransaction ? "Uang masuk lainnya" : "Uang masuk";
 
   return (
     <section className="panel cash-table-panel" aria-labelledby="cash-table-title">
@@ -101,9 +103,27 @@ export function TableView({ data }: TableViewProps) {
         <p className="cash-table-opening">
           Saldo awal buku kas{" "}
           <strong data-testid="table-opening-balance">
-            {formatMoney(summary.opening)}
+            {formatMoney(summary.openingTotal)}
           </strong>
         </p>
+        {hasOpeningTransaction && (
+          <p className="cash-table-opening-note">
+            {summary.opening > 0
+              ? `Terdiri dari ${formatMoney(summary.opening)} dari Pengaturan dan ${formatMoney(summary.openingFromTransactions)} dari transaksi “Saldo awal”.`
+              : "Saldo awal berasal dari transaksi “Saldo awal” pada kolom debit."}{" "}
+            Saldo awal yang tercatat di debit dihitung sekali.
+          </p>
+        )}
+        <dl className="cash-table-breakdown">
+          <div>
+            <dt>{incomeLabel}</dt>
+            <dd data-testid="table-other-income">{formatMoney(summary.otherIncome)}</dd>
+          </div>
+          <div>
+            <dt>Uang keluar</dt>
+            <dd>{formatMoney(summary.expense)}</dd>
+          </div>
+        </dl>
         <div className="cash-table-remaining">
           <span>
             <Wallet size={23} aria-hidden="true" /> Sisa uang
@@ -112,7 +132,9 @@ export function TableView({ data }: TableViewProps) {
             {formatMoney(summary.closing)}
           </strong>
         </div>
-        <p>Sisa uang = saldo awal buku kas + seluruh debit − seluruh kredit.</p>
+        <p>
+          Sisa uang = saldo awal buku kas + {incomeLabel.toLowerCase()} − uang keluar.
+        </p>
       </div>
     </section>
   );

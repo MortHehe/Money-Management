@@ -51,6 +51,30 @@ export function summarizeBook(data: BookData) {
   };
 }
 
+/** Hanya pemasukan dengan keterangan tepat "Saldo awal" yang dikenali. */
+function isOpeningBalanceTransaction(transaction: Transaction): boolean {
+  return (
+    transaction.kind === "income" &&
+    /^saldo\s+awal$/i.test(transaction.description.trim())
+  );
+}
+
+/** Kelompokkan saldo awal untuk tampilan, tanpa mengubah total debit atau saldo. */
+export function summarizeTable(data: BookData) {
+  const summary = summarizeBook(data);
+  const openingFromTransactions = data.transactions
+    .filter(isOpeningBalanceTransaction)
+    .reduce((total, transaction) => total + transaction.amount, 0);
+
+  return {
+    ...summary,
+    openingFromTransactions,
+    openingTotal: summary.opening + openingFromTransactions,
+    // Saldo awal yang sudah ada di debit tidak boleh ditambahkan dua kali.
+    otherIncome: summary.income - openingFromTransactions,
+  };
+}
+
 export function summarizeMonth(data: BookData, month: string) {
   const earlier = data.transactions.filter((item) => item.date.slice(0, 7) < month);
   const current = data.transactions.filter((item) => item.date.startsWith(month));
