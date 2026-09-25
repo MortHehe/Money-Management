@@ -32,6 +32,12 @@ export function formatMonth(month: string): string {
   }).format(new Date(`${month}-01T12:00:00Z`));
 }
 
+/** Tanggal ringkas untuk empat kolom buku kas, tanpa perubahan zona waktu. */
+export function formatTableDate(date: string): string {
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 /** WIB menjadi acuan tanggal buku kas di kedua perangkat. */
 export function getToday(): string {
   return new Intl.DateTimeFormat("en-CA", {

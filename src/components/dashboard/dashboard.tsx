@@ -27,6 +27,7 @@ import type {
 import { AppShell } from "@/components/layout/app-shell";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { TransactionList } from "@/components/transactions/transaction-list";
+import { TableView } from "@/components/transactions/table-view";
 import { DeleteDialog } from "@/components/transactions/delete-dialog";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { SummaryCards } from "./summary-cards";
@@ -44,6 +45,10 @@ const screenTitles: Record<Screen, { title: string; subtitle: string }> = {
   ledger: {
     title: "Catatan kecil, tenang setiap hari.",
     subtitle: "Lihat uang masuk dan keluar dalam satu tempat.",
+  },
+  table: {
+    title: "Table View",
+    subtitle: "Catatan bulanan dalam tabel, mudah dibaca satu per satu.",
   },
   reports: {
     title: "Kenali keuangan Anda.",
@@ -177,7 +182,7 @@ export function Dashboard({
           </button>
         </div>
       )}
-      {screen !== "settings" && (
+      {(screen === "ledger" || screen === "reports") && (
         <>
           <div className="section-topline">
             <h2>{screen === "ledger" ? "Sekilas keuangan" : "Laporan bulanan"}</h2>
@@ -251,6 +256,9 @@ export function Dashboard({
             </div>
           </div>
         </>
+      )}
+      {screen === "table" && (
+        <TableView key={month} data={data} month={month} onMonthChange={setMonth} />
       )}
       {screen === "reports" && <ReportsPanel data={data} month={month} />}
       {screen === "settings" && (

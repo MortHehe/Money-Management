@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Check, Download, HardDriveDownload, Info, Upload, Wallet } from "lucide-react";
 import { AmountInput } from "@/components/ui/amount-input";
 import { Modal } from "@/components/ui/modal";
+import { AppleInstallGuide } from "@/components/pwa/apple-install-guide";
 import { createBackup, downloadFile, parseBackup } from "@/lib/backup";
 import { MAX_BACKUP_BYTES } from "@/lib/constants";
 import { formatMoney, getToday } from "@/lib/format";
@@ -201,6 +202,7 @@ export function SettingsPanel({
           </p>
         </div>
       </section>
+      <AppleInstallGuide />
       {message && (
         <p role="alert" className="form-error settings-message">
           {message}

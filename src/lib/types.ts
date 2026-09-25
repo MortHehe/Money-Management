@@ -41,6 +41,6 @@ export type Mutation =
 export type ActionResult<T> =
   { success: true; data: T } | { success: false; error: string };
 
-export type Screen = "ledger" | "reports" | "settings";
+export type Screen = "ledger" | "table" | "reports" | "settings";
 
 export type StorageMode = "cloud" | "demo";

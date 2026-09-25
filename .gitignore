@@ -11,3 +11,6 @@ test-results/
 *.log
 .vercel/
 artifacts/
+
+.vercel
+.env*

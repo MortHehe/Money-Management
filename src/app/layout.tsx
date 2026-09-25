@@ -3,19 +3,25 @@ import type { ReactNode } from "react";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import "./readability.css";
+import "./table-view.css";
+import "./pwa.css";
 
 export const metadata: Metadata = {
   title: "Catat Uang — Buku kas keluarga",
   description:
     "Catat pemasukan dan pengeluaran keluarga dengan mudah. Saldo otomatis, riwayat rapi, nyaman di HP dan laptop.",
   applicationName: "Catat Uang",
+  formatDetection: { telephone: false },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Catat Uang" },
+  // Next.js menghasilkan mobile-web-app-capable; pertahankan juga penanda Safari lama.
+  other: { "apple-mobile-web-app-capable": "yes" },
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#235b49",
 };
 

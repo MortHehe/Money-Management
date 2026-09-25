@@ -1,0 +1,17 @@
+# Konfigurasi rahasia dan hasil kerja lokal tidak diunggah saat deployment CLI.
+.env*
+!.env.example
+.git/
+.vercel/
+.codex/
+.agents/
+node_modules/
+.next/
+out/
+.npm-cache/
+.playwright/
+artifacts/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log

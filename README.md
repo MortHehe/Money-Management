@@ -7,11 +7,12 @@ Buku kas keluarga berbahasa Indonesia. Tampilan mengutamakan HP; laptop menampil
 - Uang masuk/keluar, kategori, tanggal, keterangan, ubah, dan hapus dengan konfirmasi.
 - Saldo awal, saldo keseluruhan, saldo berjalan, dan saldo awal/akhir tiap bulan.
 - Pencarian, filter jenis transaksi, pilihan bulan, dan halaman riwayat.
+- Tab **Table View**: Tanggal, Keterangan, Debit (uang masuk), Kredit (uang keluar), total bulanan, serta **Sisa uang** di bawah tabel. Urutan tanggal paling awal, 25 transaksi per halaman; total dan sisa uang selalu menghitung seluruh bulan.
 - Laporan enam bulan dan rincian pengeluaran menurut kategori.
 - Ekspor CSV yang bisa dibuka di Excel; cadangan JSON dan pemulihan atomik.
 - Akun keluarga dengan sesi 30 hari, kata sandi scrypt, pembatasan percobaan masuk, serta pemeriksaan akun pada setiap operasi server.
 - Konflik perubahan dari dua perangkat dideteksi sebelum data ditimpa.
-- Manifest dan ikon untuk ditambahkan ke layar utama HP. Pencatatan cloud membutuhkan internet; belum ada sinkronisasi offline.
+- PWA untuk Android, iPhone, dan iPad: ikon Apple, tampilan mandiri, ruang aman untuk notch/home indicator, serta panduan pemasangan Safari di halaman masuk dan Pengaturan. Pencatatan cloud membutuhkan internet; belum ada sinkronisasi offline.
 - Mode contoh `/demo` terpisah; data contoh hanya berada di browser.
 
 ## 1. Coba tampilan tanpa database
@@ -50,6 +51,27 @@ Jika lupa kata sandi, jalankan `npm run account:create` dengan email yang sama. 
 
 ## 3. Deploy ke Vercel
 
+Cara langsung dari terminal (tanpa harus menghubungkan repository Git):
+
+```powershell
+npx vercel@latest login
+npx vercel@latest link
+```
+
+Jalankan perintah satu per satu dari folder proyek. Selesaikan login melalui browser, lalu pilih akun pribadi/team yang sesuai dan buat proyek `catat-uang` pada direktori `./`.
+
+Di dashboard proyek Vercel, buka **Settings → Environment Variables**. Tambahkan `DATABASE_URL` untuk **Production** dengan nilai connection string Neon dari `.env.local` (URL saja, tanpa `DATABASE_URL=` dan tanpa tanda kutip). Set `ENABLE_DEMO=false` untuk Production. Jika database yang dipakai sama dengan database lokal yang sudah dimigrasi dan dibuatkan akun, tahap migrasi dan pembuatan akun tidak perlu diulang.
+
+Setelah pengaturan disimpan, jalankan:
+
+```powershell
+npx vercel@latest deploy --prod
+```
+
+Gunakan preset **Next.js**, build command `npm run build`, dan output directory bawaan. Buka URL production dari hasil deployment, lalu masuk menggunakan akun keluarga yang sudah dibuat. `.vercelignore` mengecualikan file rahasia, cache, browser pengujian, dan hasil build lokal dari unggahan CLI. Untuk memperbarui aplikasi, jalankan perintah deployment yang sama dari folder proyek setelah perubahan selesai.
+
+Alternatif melalui integrasi Git:
+
 1. Simpan proyek di repository Git lalu impor ke Vercel sebagai proyek **Next.js**. Bisa juga memakai Vercel CLI jika sudah tersedia.
 2. Tambahkan integrasi Neon dan hubungkan ke proyek. Pastikan environment variable **DATABASE_URL** tersedia untuk lingkungan **Production**.
 3. Gunakan database/branch Neon terpisah untuk **Preview** agar percobaan tidak mengubah data asli.
@@ -60,6 +82,22 @@ Jika lupa kata sandi, jalankan `npm run account:create` dengan email yang sama. 
 Tidak perlu VPS, komputer yang terus menyala, atau IP publik di rumah. Vercel menjalankan aplikasi; Neon menjalankan database. Periksa ketentuan paket yang dipilih: Vercel Hobby ditujukan untuk penggunaan pribadi/nonkomersial, dan layanan database memiliki kuota terpisah.
 
 Kredensial Neon dan akun Vercel tidak termasuk dalam repository ini. Build lokal bisa dilakukan tanpa kredensial; data cloud hanya bisa diuji setelah koneksi dikonfigurasi.
+
+## 4. Pasang di iPhone / iPad
+
+1. Buka alamat **production HTTPS yang tetap** di Safari (misalnya `nama-project.vercel.app`).
+2. Ketuk **Bagikan**; pada sebagian tata letak Safari, buka **Lainnya (…)** dahulu.
+3. Pilih **Tambah ke Layar Utama** (Add to Home Screen).
+4. Jika tersedia, aktifkan **Buka sebagai App Web**, lalu ketuk **Tambah**.
+5. Buka ikon **Catat Uang** di layar utama dan masuk menggunakan akun keluarga.
+
+Panduan yang sama tersedia di halaman masuk dan **Pengaturan → Pasang di iPhone / iPad**. Safari menjalankan pemasangan melalui menunya sendiri. Aplikasi tetap membutuhkan internet untuk membuka dan menyimpan catatan cloud.
+
+Untuk Android, buka alamat yang sama di Chrome lalu pilih menu **Instal dan buat pintasan → Instal** atau **Tambahkan ke layar utama → Instal aplikasi**, sesuai versi browser.
+
+Pembaruan fitur dilakukan dengan deploy ke project dan alamat production yang sama, kemudian muat ulang aplikasi. Pemasangan ulang tidak diperlukan untuk pembaruan fitur. Identitas manifest `/` tetap sama dengan identitas sebelumnya yang mengikuti `start_url`. Ikon dan nama aplikasi mungkin diperbarui dengan mekanisme berbeda oleh browser.
+
+Referensi pemasangan: [petunjuk Apple](https://support.apple.com/id-id/guide/iphone/iphea86e5236/ios). Tampilan memakai [safe area WebKit](https://webkit.org/blog/7929/designing-websites-for-iphone-x/) agar konten tidak tertutup bagian fisik layar.
 
 ## Struktur kode
 
@@ -73,8 +111,9 @@ src/
     auth/              Form masuk dan tampilan awal
     dashboard/         Ringkasan, laporan, pilihan bulan, pengatur halaman
     layout/            Sidebar, navigasi HP, dan bingkai aplikasi
+    pwa/               Panduan memasang aplikasi di perangkat Apple
     settings/          Saldo awal, cadangan, dan pemulihan
-    transactions/      Daftar, formulir, dan konfirmasi hapus
+    transactions/      Daftar, Table View, formulir, dan konfirmasi hapus
     ui/                Komponen umum seperti modal dan input nominal
   hooks/               Pengelolaan data di browser dan status koneksi
   lib/                 Tipe, validasi, perhitungan, format, dan cadangan
@@ -93,6 +132,7 @@ Fungsi dipisahkan dengan baris kosong. Nama fungsi menjelaskan tugasnya; komenta
 - Nominal disimpan sebagai **integer rupiah** di kolom PostgreSQL `bigint`; tidak menggunakan pecahan floating point untuk uang.
 - Nominal per transaksi maksimal Rp999.999.999.999; versi awal dibatasi 5.000 transaksi per akun. Batas ini menjaga keseluruhan perhitungan tetap berada dalam rentang integer aman JavaScript dan menjaga beban pengambilan data. Untuk kebutuhan lebih besar, tambahkan pagination/aggregasi di server dan strategi angka besar sebelum menaikkan batas.
 - Saldo awal adalah uang sebelum transaksi pertama yang dicatat. Saldo awal bulan = saldo awal buku + semua transaksi sebelum bulan tersebut.
+- Sisa uang pada Table View = saldo awal bulan + total debit bulan tersebut − total kredit bulan tersebut. Bulan kosong tetap menampilkan saldo yang dibawa; saldo negatif ditampilkan apa adanya. Pergantian halaman tidak memengaruhi total.
 - Urutan saldo berjalan: tanggal, waktu pembuatan, lalu ID. Riwayat menampilkan transaksi terbaru terlebih dahulu. Pencarian/filter tidak mengubah nilai saldo historis.
 - Waktu default menggunakan **WIB (Asia/Jakarta)**. Tanggal transaksi disimpan sebagai `date` agar tidak bergeser antarperangkat.
 - Penulisan mengunci satu buku kas dan memeriksa `revision` di dalam transaksi PostgreSQL. Jika perangkat lain sudah mengubah data, pengguna diminta memuat ulang.
@@ -111,11 +151,11 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-Pengujian SQL menggunakan PostgreSQL WASM lokal (PGlite) agar constraint, isolasi akun, konflik revisi, dan rollback bisa diuji tanpa menyentuh Neon. Pengujian browser menggunakan mode contoh dan memeriksa alur yang sama di desktop/HP. Pengujian end-to-end koneksi Neon memerlukan database terkonfigurasi.
+Pengujian SQL menggunakan PostgreSQL WASM lokal (PGlite) agar constraint, isolasi akun, konflik revisi, dan rollback bisa diuji tanpa menyentuh Neon. Pengujian browser menggunakan mode contoh pada Chromium desktop/Android serta WebKit dengan ukuran iPhone dan iPad. Pengujian ini memeriksa perhitungan lintas bulan dan halaman, transaksi, metadata PWA, dan panduan pemasangan. Pemasangan nyata melalui menu Safari serta perilaku notch/home indicator tetap perlu diperiksa di perangkat Apple melalui HTTPS. Pengujian end-to-end koneksi Neon memerlukan database terkonfigurasi.
 
 ## Referensi
 

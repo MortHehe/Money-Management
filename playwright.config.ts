@@ -20,6 +20,15 @@ export default defineConfig({
       name: "mobile",
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
+    {
+      name: "iphone",
+      use: { ...devices["iPhone 13"] },
+    },
+    {
+      name: "ipad",
+      testMatch: /table-view\.spec\.ts/,
+      use: { ...devices["iPad (gen 7)"] },
+    },
   ],
   webServer: {
     command: "npm run dev",

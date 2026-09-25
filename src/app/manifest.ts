@@ -2,10 +2,12 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Catat Uang — Buku kas keluarga",
     short_name: "Catat Uang",
     description: "Buku kas sederhana untuk keseharian.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#f6f7f4",
     theme_color: "#235b49",

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { BookOpen } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import { WelcomeLayout } from "@/components/auth/welcome-layout";
+import { AppleInstallGuide } from "@/components/pwa/apple-install-guide";
 import { getAccountId } from "@/server/auth";
 import { isDatabaseConfigured } from "@/server/db";
 
@@ -27,6 +28,7 @@ export default async function LoginPage() {
         Masuk untuk melihat dan mencatat keuangan keluarga Anda.
       </p>
       <LoginForm />
+      <AppleInstallGuide />
     </WelcomeLayout>
   );
 }

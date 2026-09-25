@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings2,
   ShieldCheck,
+  Table2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { logoutAction } from "@/app/actions/auth";
@@ -26,6 +27,7 @@ interface AppShellProps {
 
 const navigation = [
   { id: "ledger" as const, label: "Buku kas", icon: BookOpen },
+  { id: "table" as const, label: "Table View", icon: Table2 },
   { id: "reports" as const, label: "Laporan", icon: ChartNoAxesCombined },
   { id: "settings" as const, label: "Pengaturan", icon: Settings2 },
 ];
