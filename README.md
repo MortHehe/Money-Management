@@ -7,7 +7,7 @@ Buku kas keluarga berbahasa Indonesia. Tampilan mengutamakan HP; laptop menampil
 - Uang masuk/keluar, kategori, tanggal, keterangan, ubah, dan hapus dengan konfirmasi.
 - Saldo awal, saldo keseluruhan, saldo berjalan, dan saldo awal/akhir tiap bulan.
 - Pencarian, filter jenis transaksi, pilihan bulan, dan halaman riwayat.
-- Tab **Table View**: Tanggal, Keterangan, Debit (uang masuk), Kredit (uang keluar), total bulanan, serta **Sisa uang** di bawah tabel. Urutan tanggal paling awal, 25 transaksi per halaman; total dan sisa uang selalu menghitung seluruh bulan.
+- Tab **Table View**: seluruh transaksi dari semua bulan dan tahun dalam satu tabel, dengan kolom Tanggal, Keterangan, Debit (uang masuk), Kredit (uang keluar), total keseluruhan, serta **Sisa uang** di bawah tabel. Urutan tanggal paling awal; semua baris langsung tersedia dengan menggulir tabel, tanpa filter bulan atau pembagian halaman.
 - Laporan enam bulan dan rincian pengeluaran menurut kategori.
 - Ekspor CSV yang bisa dibuka di Excel; cadangan JSON dan pemulihan atomik.
 - Akun keluarga dengan sesi 30 hari, kata sandi scrypt, pembatasan percobaan masuk, serta pemeriksaan akun pada setiap operasi server.
@@ -132,7 +132,7 @@ Fungsi dipisahkan dengan baris kosong. Nama fungsi menjelaskan tugasnya; komenta
 - Nominal disimpan sebagai **integer rupiah** di kolom PostgreSQL `bigint`; tidak menggunakan pecahan floating point untuk uang.
 - Nominal per transaksi maksimal Rp999.999.999.999; versi awal dibatasi 5.000 transaksi per akun. Batas ini menjaga keseluruhan perhitungan tetap berada dalam rentang integer aman JavaScript dan menjaga beban pengambilan data. Untuk kebutuhan lebih besar, tambahkan pagination/aggregasi di server dan strategi angka besar sebelum menaikkan batas.
 - Saldo awal adalah uang sebelum transaksi pertama yang dicatat. Saldo awal bulan = saldo awal buku + semua transaksi sebelum bulan tersebut.
-- Sisa uang pada Table View = saldo awal bulan + total debit bulan tersebut − total kredit bulan tersebut. Bulan kosong tetap menampilkan saldo yang dibawa; saldo negatif ditampilkan apa adanya. Pergantian halaman tidak memengaruhi total.
+- Sisa uang pada Table View = saldo awal buku kas + seluruh debit − seluruh kredit. Buku kosong tetap menampilkan saldo awal; saldo negatif ditampilkan apa adanya. Pilihan bulan di Buku kas dan Laporan tidak membatasi data Table View.
 - Urutan saldo berjalan: tanggal, waktu pembuatan, lalu ID. Riwayat menampilkan transaksi terbaru terlebih dahulu. Pencarian/filter tidak mengubah nilai saldo historis.
 - Waktu default menggunakan **WIB (Asia/Jakarta)**. Tanggal transaksi disimpan sebagai `date` agar tidak bergeser antarperangkat.
 - Penulisan mengunci satu buku kas dan memeriksa `revision` di dalam transaksi PostgreSQL. Jika perangkat lain sudah mengubah data, pengguna diminta memuat ulang.
@@ -155,7 +155,7 @@ npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-Pengujian SQL menggunakan PostgreSQL WASM lokal (PGlite) agar constraint, isolasi akun, konflik revisi, dan rollback bisa diuji tanpa menyentuh Neon. Pengujian browser menggunakan mode contoh pada Chromium desktop/Android serta WebKit dengan ukuran iPhone dan iPad. Pengujian ini memeriksa perhitungan lintas bulan dan halaman, transaksi, metadata PWA, dan panduan pemasangan. Pemasangan nyata melalui menu Safari serta perilaku notch/home indicator tetap perlu diperiksa di perangkat Apple melalui HTTPS. Pengujian end-to-end koneksi Neon memerlukan database terkonfigurasi.
+Pengujian SQL menggunakan PostgreSQL WASM lokal (PGlite) agar constraint, isolasi akun, konflik revisi, dan rollback bisa diuji tanpa menyentuh Neon. Pengujian browser menggunakan mode contoh pada Chromium desktop/Android serta WebKit dengan ukuran iPhone dan iPad. Pengujian ini memeriksa perhitungan lintas bulan dan tahun, seluruh baris Table View, transaksi, metadata PWA, dan panduan pemasangan. Pemasangan nyata melalui menu Safari serta perilaku notch/home indicator tetap perlu diperiksa di perangkat Apple melalui HTTPS. Pengujian end-to-end koneksi Neon memerlukan database terkonfigurasi.
 
 ## Referensi
 

@@ -24,7 +24,7 @@ function createBook(): BookData {
     settings: { name: "Buku pengujian tabel", openingBalance: 100_000 },
     revision: 0,
     transactions: [
-      createTransaction(100, "2026-01-31", 500_000),
+      createTransaction(100, "2025-12-31", 500_000),
       ...Array.from({ length: 26 }, (_, index) =>
         createTransaction(
           index + 1,
@@ -47,10 +47,9 @@ async function openTable(page: Page, data = createBook()) {
   );
   await page.goto("/demo");
   await page.getByRole("button", { name: "Table View", exact: true }).click();
-  await page.getByLabel("Bulan laporan").selectOption("2026-02");
 }
 
-test("Table View menghitung seluruh bulan, membawa saldo lama, dan mengurutkan halaman", async ({
+test("Table View menampilkan semua baris lintas bulan dan tahun dengan total keseluruhan", async ({
   page,
 }, testInfo) => {
   await openTable(page);
@@ -61,49 +60,57 @@ test("Table View menghitung seluruh bulan, membawa saldo lama, dan mengurutkan h
     "Debit",
     "Kredit",
   ]);
-  await expect(table.locator("tbody tr")).toHaveCount(25);
+  await expect(page.getByLabel("Bulan laporan")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Halaman Table View" })).toHaveCount(
+    0,
+  );
+  await expect(table.locator("tbody tr")).toHaveCount(29);
   await expect(table.locator("tbody tr").first().locator("td")).toHaveText([
-    "01/02/2026",
-    "Catatan 1",
-    "1.000",
+    "31/12/2025",
+    "Catatan 100",
+    "500.000",
     "—",
   ]);
-  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 600.000");
-  await expect(page.getByTestId("table-total-debit")).toHaveText("26.000");
-  await expect(page.getByTestId("table-total-credit")).toHaveText("75.000");
-  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 551.000");
-
-  await page.getByRole("button", { name: "Halaman tabel berikutnya" }).click();
-  await expect(table.locator("tbody tr")).toHaveCount(2);
   await expect(table.locator("tbody tr").last().locator("td")).toHaveText([
-    "27/02/2026",
-    "Catatan 27",
+    "01/03/2026",
+    "Catatan 101",
+    "999.000",
     "—",
-    "75.000",
   ]);
-  await expect(page.getByTestId("table-total-debit")).toHaveText("26.000");
+  await expect(
+    table.locator("tbody tr").filter({ hasText: "27/02/2026" }).locator("td"),
+  ).toHaveText(["27/02/2026", "Catatan 27", "—", "75.000"]);
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 100.000");
+  await expect(page.getByTestId("table-total-debit")).toHaveText("1.525.000");
   await expect(page.getByTestId("table-total-credit")).toHaveText("75.000");
-  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 551.000");
+  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 1.550.000");
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({
     path: `artifacts/${testInfo.project.name}-table-view.png`,
     fullPage: true,
   });
 
-  await page.getByRole("button", { name: "Bulan berikutnya" }).click();
-  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await page.getByRole("button", { name: "Buku kas", exact: true }).click();
+  await page.getByLabel("Bulan laporan").selectOption("2026-02");
+  await page.getByRole("button", { name: "Table View", exact: true }).click();
+  await expect(table.locator("tbody tr")).toHaveCount(29);
+  await expect(page.getByTestId("table-total-debit")).toHaveText("1.525.000");
   await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 1.550.000");
-  await page.getByRole("button", { name: "Bulan berikutnya" }).click();
-  await expect(table).toContainText("Belum ada transaksi pada bulan ini.");
+});
+
+test("buku kosong menampilkan total nol dan sisa uang sesuai saldo awal", async ({
+  page,
+}) => {
+  const data = createBook();
+  data.transactions = [];
+  await openTable(page, data);
+  await expect(page.locator(".cash-table")).toContainText(
+    "Belum ada transaksi dalam buku kas.",
+  );
   await expect(page.getByTestId("table-total-debit")).toHaveText("0");
   await expect(page.getByTestId("table-total-credit")).toHaveText("0");
-  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 1.550.000");
-
-  await page.getByLabel("Bulan laporan").selectOption("2026-02");
-  await expect(table.locator("tbody tr").first()).toContainText("Catatan 1");
-  await expect(
-    page.getByRole("button", { name: "Halaman tabel sebelumnya" }),
-  ).toBeDisabled();
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 100.000");
+  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 100.000");
 });
 
 test("perubahan di Buku kas langsung tampil di Table View", async ({ page }) => {
@@ -118,11 +125,11 @@ test("perubahan di Buku kas langsung tampil di Table View", async ({ page }) => 
   await expect(dialog).not.toBeVisible();
   await page.getByRole("button", { name: "Table View", exact: true }).click();
   await expect(page.getByTestId("table-total-credit")).toHaveText("76.000");
-  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 550.000");
-  await page.getByRole("button", { name: "Halaman tabel berikutnya" }).click();
-  await expect(page.locator(".cash-table tbody tr").last()).toContainText(
-    "Belanja dari Buku kas",
-  );
+  await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 1.549.000");
+  await expect(page.locator(".cash-table tbody tr")).toHaveCount(30);
+  await expect(
+    page.locator(".cash-table tbody tr").filter({ hasText: "28/02/2026" }),
+  ).toContainText("Belanja dari Buku kas");
 });
 
 test("nominal besar dan sisa negatif tetap terbaca pada layar 320px", async ({

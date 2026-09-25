@@ -48,7 +48,7 @@ const screenTitles: Record<Screen, { title: string; subtitle: string }> = {
   },
   table: {
     title: "Table View",
-    subtitle: "Catatan bulanan dalam tabel, mudah dibaca satu per satu.",
+    subtitle: "Seluruh catatan dalam satu tabel, dari awal hingga sekarang.",
   },
   reports: {
     title: "Kenali keuangan Anda.",
@@ -257,9 +257,7 @@ export function Dashboard({
           </div>
         </>
       )}
-      {screen === "table" && (
-        <TableView key={month} data={data} month={month} onMonthChange={setMonth} />
-      )}
+      {screen === "table" && <TableView data={data} />}
       {screen === "reports" && <ReportsPanel data={data} month={month} />}
       {screen === "settings" && (
         <SettingsPanel

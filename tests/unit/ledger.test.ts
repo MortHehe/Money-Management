@@ -4,6 +4,7 @@ import {
   applyDemoMutation,
   buildLedger,
   currentBalance,
+  summarizeBook,
   summarizeMonth,
 } from "../../src/lib/ledger";
 import { backupSchema, transactionInputSchema } from "../../src/lib/validation";
@@ -37,6 +38,25 @@ function fixture(): BookData {
     revision: 0,
   };
 }
+
+test("ringkasan buku menjumlahkan semua periode dan mempertahankan saldo awal buku kosong", () => {
+  const data = fixture();
+  assert.deepEqual(summarizeBook(data), {
+    opening: 100_000,
+    income: 500_000,
+    expense: 75_000,
+    closing: 525_000,
+    count: 2,
+  });
+  assert.equal(summarizeBook(data).closing, currentBalance(data));
+  assert.deepEqual(summarizeBook({ ...data, transactions: [] }), {
+    opening: 100_000,
+    income: 0,
+    expense: 0,
+    closing: 100_000,
+    count: 0,
+  });
+});
 
 test("saldo bulan berikutnya membawa saldo lama, meski array transaksi tidak berurutan", () => {
   const summary = summarizeMonth(fixture(), "2026-02");

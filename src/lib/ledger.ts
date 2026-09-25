@@ -27,6 +27,30 @@ export function buildLedger(data: BookData): LedgerRow[] {
   });
 }
 
+/** Ringkasan seluruh buku kas, termasuk transaksi dari bulan dan tahun berbeda. */
+export function summarizeBook(data: BookData) {
+  let income = 0;
+  let expense = 0;
+
+  for (const transaction of data.transactions) {
+    if (transaction.kind === "income") {
+      income += transaction.amount;
+    } else {
+      expense += transaction.amount;
+    }
+  }
+
+  const opening = data.settings.openingBalance;
+
+  return {
+    opening,
+    income,
+    expense,
+    closing: opening + income - expense,
+    count: data.transactions.length,
+  };
+}
+
 export function summarizeMonth(data: BookData, month: string) {
   const earlier = data.transactions.filter((item) => item.date.slice(0, 7) < month);
   const current = data.transactions.filter((item) => item.date.startsWith(month));

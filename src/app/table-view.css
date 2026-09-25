@@ -89,16 +89,11 @@
   color: #59665e;
 }
 
-.cash-table-pagination {
+.cash-table-count {
   border-top: 0;
   flex-wrap: wrap;
   color: #59665e;
   font-size: 14px;
-}
-
-.cash-table-pagination .icon-button {
-  width: 44px;
-  height: 44px;
 }
 
 .cash-table-balance {
@@ -164,23 +159,6 @@
   .cash-table-heading {
     padding: 18px 16px 12px;
     align-items: flex-start;
-  }
-
-  .cash-table-heading .month-picker {
-    margin-left: 0;
-    width: 100%;
-    max-width: 300px;
-  }
-
-  .cash-table-heading .month-picker select {
-    font-size: 16px;
-    max-width: none;
-    flex: 1;
-  }
-
-  .cash-table-heading .month-picker .icon-button {
-    width: 44px;
-    min-height: 44px;
   }
 
   .cash-table-hint {
