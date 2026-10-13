@@ -4,11 +4,20 @@ export const APP_NAME = "Catat Uang";
 export const MAX_AMOUNT = 999_999_999_999;
 export const MAX_TRANSACTIONS = 5_000;
 export const MAX_BACKUP_BYTES = 3_000_000;
+export const MAX_CATEGORY_LENGTH = 40;
 export const DEMO_STORAGE_KEY = "catat-uang:demo:v1";
 
 export const CATEGORIES: Record<TransactionKind, readonly string[]> = {
   income: ["Gaji", "Pemberian", "Usaha", "Lainnya"],
-  expense: ["Belanja", "Makanan", "Tagihan", "Transportasi", "Kesehatan", "Lainnya"],
+  expense: [
+    "Belanja",
+    "Makanan",
+    "Tagihan",
+    "Transportasi",
+    "Kesehatan",
+    "Gaji",
+    "Lainnya",
+  ],
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -17,5 +26,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Tagihan: "#657cba",
   Transportasi: "#929d67",
   Kesehatan: "#b5717c",
+  Gaji: "#55789b",
   Lainnya: "#8a9290",
 };

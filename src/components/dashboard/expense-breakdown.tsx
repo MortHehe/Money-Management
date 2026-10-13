@@ -1,5 +1,5 @@
 import { ChartPie, ArrowUpRight } from "lucide-react";
-import { CATEGORY_COLORS } from "@/lib/constants";
+import { getCategoryColor } from "@/lib/categories";
 import { expenseByCategory } from "@/lib/ledger";
 import { formatMoney, formatMonth } from "@/lib/format";
 import type { Transaction } from "@/lib/types";
@@ -40,7 +40,7 @@ export function ExpenseBreakdown({
                 key={item.category}
                 style={{
                   width: `${(item.amount / total) * 100}%`,
-                  backgroundColor: CATEGORY_COLORS[item.category],
+                  backgroundColor: getCategoryColor(item.category),
                 }}
               />
             ))}
@@ -51,7 +51,7 @@ export function ExpenseBreakdown({
                 <div>
                   <span
                     className="category-dot"
-                    style={{ backgroundColor: CATEGORY_COLORS[item.category] }}
+                    style={{ backgroundColor: getCategoryColor(item.category) }}
                   />
                   <span>{item.category}</span>
                   <small>{Math.round((item.amount / total) * 100)}%</small>

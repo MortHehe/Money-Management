@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CATEGORIES, MAX_AMOUNT, MAX_TRANSACTIONS } from "./constants";
+import { MAX_AMOUNT, MAX_CATEGORY_LENGTH, MAX_TRANSACTIONS } from "./constants";
 
 const amountSchema = z.number().int().min(1).max(MAX_AMOUNT);
 
@@ -17,19 +17,18 @@ const dateSchema = z
     );
   }, "Tanggal tidak valid. Gunakan tahun 2000–2100.");
 
-export const transactionInputSchema = z
-  .object({
-    id: z.uuid(),
-    kind: z.enum(["income", "expense"]),
-    amount: amountSchema,
-    date: dateSchema,
-    category: z.string().max(40),
-    description: z.string().trim().min(1, "Isi keterangan transaksi.").max(160),
-  })
-  .refine((transaction) => CATEGORIES[transaction.kind].includes(transaction.category), {
-    message: "Kategori tidak sesuai dengan jenis transaksi.",
-    path: ["category"],
-  });
+export const transactionInputSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(["income", "expense"]),
+  amount: amountSchema,
+  date: dateSchema,
+  category: z
+    .string()
+    .trim()
+    .min(1, "Isi nama kategori.")
+    .max(MAX_CATEGORY_LENGTH, `Nama kategori maksimal ${MAX_CATEGORY_LENGTH} karakter.`),
+  description: z.string().trim().min(1, "Isi keterangan transaksi.").max(160),
+});
 
 export const transactionSchema = transactionInputSchema.safeExtend({
   createdAt: z.iso.datetime(),

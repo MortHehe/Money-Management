@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { ArrowDownLeft, ArrowUpRight, Check, LoaderCircle } from "lucide-react";
-import { CATEGORIES, MAX_AMOUNT } from "@/lib/constants";
+import { CATEGORIES, MAX_AMOUNT, MAX_CATEGORY_LENGTH } from "@/lib/constants";
+import { getCategoryOptions } from "@/lib/categories";
 import { createTransactionId } from "@/lib/browser-id";
 import { getToday } from "@/lib/format";
 import { transactionInputSchema } from "@/lib/validation";
@@ -13,6 +14,7 @@ import { AmountInput } from "@/components/ui/amount-input";
 interface TransactionFormProps {
   kind: TransactionKind;
   transaction?: Transaction;
+  transactions: readonly Transaction[];
   busy: boolean;
   error?: string;
   onClose: () => void;
@@ -22,6 +24,7 @@ interface TransactionFormProps {
 export function TransactionForm({
   kind: initialKind,
   transaction,
+  transactions,
   busy,
   error,
   onClose,
@@ -35,11 +38,32 @@ export function TransactionForm({
   const [category, setCategory] = useState(
     transaction?.category ?? CATEGORIES[initialKind][0],
   );
+  // Nilai kosong hanya untuk pilihan custom, bukan nama kategori yang disimpan.
+  const [customCategory, setCustomCategory] = useState("");
   const [validationError, setValidationError] = useState("");
+  const categoryOptions = useMemo(
+    () => getCategoryOptions(kind, transactions),
+    [kind, transactions],
+  );
 
   function changeKind(nextKind: TransactionKind) {
+    if (nextKind === kind) {
+      return;
+    }
+
     setKind(nextKind);
-    setCategory(CATEGORIES[nextKind][0]);
+    setValidationError("");
+
+    if (category === "") {
+      return;
+    }
+
+    if (CATEGORIES[kind].includes(category)) {
+      setCategory(CATEGORIES[nextKind][0]);
+    } else {
+      setCustomCategory(category);
+      setCategory("");
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -51,15 +75,21 @@ export function TransactionForm({
       amount: Number(amount),
       description,
       date,
-      category,
+      category: category === "" ? customCategory : category,
     });
 
     if (!result.success) {
-      setValidationError(
-        !amount || Number(amount) < 1 || Number(amount) > MAX_AMOUNT
-          ? "Isi nominal antara Rp1 dan Rp999.999.999.999."
-          : "Periksa tanggal dan isi keterangan transaksi (maksimal 160 karakter).",
-      );
+      if (!amount || Number(amount) < 1 || Number(amount) > MAX_AMOUNT) {
+        setValidationError("Isi nominal antara Rp1 dan Rp999.999.999.999.");
+      } else if (result.error.issues.some((issue) => issue.path[0] === "category")) {
+        setValidationError(
+          `Isi nama kategori antara 1 dan ${MAX_CATEGORY_LENGTH} karakter.`,
+        );
+      } else {
+        setValidationError(
+          "Periksa tanggal dan isi keterangan transaksi (maksimal 160 karakter).",
+        );
+      }
       return;
     }
 
@@ -136,12 +166,35 @@ export function TransactionForm({
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               >
-                {CATEGORIES[kind].map((item) => (
+                {categoryOptions.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
+                <option value="">Kategori custom…</option>
               </select>
             </div>
           </div>
+          {category === "" && (
+            <div>
+              <label htmlFor="transaction-custom-category">
+                Nama kategori custom <span className="required">*</span>
+              </label>
+              <input
+                id="transaction-custom-category"
+                value={customCategory}
+                onChange={(event) => setCustomCategory(event.target.value)}
+                placeholder={
+                  kind === "income" ? "Contoh: Sewa rumah" : "Contoh: Bahan bangunan"
+                }
+                maxLength={MAX_CATEGORY_LENGTH}
+                aria-describedby="custom-category-help"
+                required
+              />
+              <p className="field-help" id="custom-category-help">
+                Maksimal {MAX_CATEGORY_LENGTH} karakter. Setelah disimpan, kategori ini
+                bisa dipilih lagi.
+              </p>
+            </div>
+          )}
         </fieldset>
         {(validationError || error) && (
           <p className="form-error" role="alert">

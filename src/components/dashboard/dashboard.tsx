@@ -292,6 +292,7 @@ export function Dashboard({
         <TransactionForm
           kind={editor.kind}
           transaction={editor.transaction}
+          transactions={data.transactions}
           busy={busy}
           error={notice?.kind === "error" ? notice.text : undefined}
           onClose={() => setEditor(null)}

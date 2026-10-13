@@ -8,7 +8,11 @@ import {
   summarizeMonth,
   summarizeTable,
 } from "../../src/lib/ledger";
-import { backupSchema, transactionInputSchema } from "../../src/lib/validation";
+import {
+  backupSchema,
+  mutationSchema,
+  transactionInputSchema,
+} from "../../src/lib/validation";
 import { createBackup, createCsv, parseBackup } from "../../src/lib/backup";
 import type { BookData, Transaction } from "../../src/lib/types";
 
@@ -189,7 +193,7 @@ test("permintaan simpan ulang dengan ID sama tidak menggandakan transaksi", () =
   assert.equal(changed.revision, data.revision);
 });
 
-test("validasi menolak pecahan, nominal negatif, tanggal palsu, dan kategori silang", () => {
+test("validasi menolak pecahan, nominal negatif, dan tanggal palsu", () => {
   assert.equal(
     transactionInputSchema.safeParse({ ...income, amount: 1.5 }).success,
     false,
@@ -202,10 +206,65 @@ test("validasi menolak pecahan, nominal negatif, tanggal palsu, dan kategori sil
     transactionInputSchema.safeParse({ ...income, date: "2026-02-30" }).success,
     false,
   );
+});
+
+test("kategori bebas dan Gaji pengeluaran diterima dengan spasi luar dirapikan", () => {
+  for (const kind of ["income", "expense"] as const) {
+    for (const category of ["Gaji", "Belanja", "  Dana pembangunan\t", "a".repeat(40)]) {
+      const parsed = transactionInputSchema.parse({ ...income, kind, category });
+
+      assert.equal(parsed.category, category.trim());
+      assert.equal(parsed.kind, kind);
+    }
+  }
+
   assert.equal(
-    transactionInputSchema.safeParse({ ...income, category: "Belanja" }).success,
-    false,
+    transactionInputSchema.parse({ ...income, category: `  ${"a".repeat(40)}  ` })
+      .category.length,
+    40,
   );
+});
+
+test("kategori kosong, hanya whitespace, atau terlalu panjang ditolak sebelum simpan", () => {
+  for (const category of ["", "   ", "\t\r\n ", "a".repeat(41)]) {
+    for (const type of ["create", "update"] as const) {
+      assert.equal(
+        mutationSchema.safeParse({ type, transaction: { ...income, category } }).success,
+        false,
+      );
+    }
+
+    assert.equal(
+      backupSchema.safeParse({
+        ...createBackup(fixture()),
+        transactions: [{ ...income, category }],
+      }).success,
+      false,
+    );
+  }
+});
+
+test("kategori bebas tetap tersimpan saat edit, ekspor CSV, dan pemulihan cadangan", () => {
+  const mutation = mutationSchema.parse({
+    type: "update",
+    transaction: { ...expense, category: "  Upah tukang  " },
+  });
+  const updated = applyDemoMutation(fixture(), mutation);
+
+  assert.equal(
+    updated.transactions.find((item) => item.id === expense.id)?.category,
+    "Upah tukang",
+  );
+  assert.ok(createCsv(updated, "2026-02").includes('"Upah tukang"'));
+
+  const backup = parseBackup(JSON.stringify(createBackup(updated)));
+  const restored = applyDemoMutation(
+    { ...fixture(), transactions: [] },
+    { type: "restore", backup },
+  );
+
+  assert.deepEqual(restored.transactions, updated.transactions);
+  assert.equal(currentBalance(restored), currentBalance(updated));
 });
 
 test("pemulihan mengembalikan saldo awal dan seluruh transaksi", () => {

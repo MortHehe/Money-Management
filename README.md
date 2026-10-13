@@ -5,6 +5,7 @@ Buku kas keluarga berbahasa Indonesia. Tampilan mengutamakan HP; laptop menampil
 ## Fitur
 
 - Uang masuk/keluar, kategori, tanggal, keterangan, ubah, dan hapus dengan konfirmasi.
+- Kategori pengeluaran mencakup **Gaji**. Pilih **Kategori custom…** pada pemasukan atau pengeluaran untuk mengetik kategori sendiri (1–40 karakter). Kategori yang masih digunakan dalam transaksi tersedia kembali pada dropdown jenis transaksi yang sama, termasuk ketika mengedit. Kategori custom ikut tersimpan dalam cadangan, ekspor CSV, pencarian, dan laporan.
 - Saldo awal, saldo keseluruhan, saldo berjalan, dan saldo awal/akhir tiap bulan.
 - **Sekilas keuangan** menampilkan saldo, total uang masuk, dan total uang keluar untuk seluruh periode. Pilihan bulan berada pada bagian riwayat/laporan dan tidak mengubah angka ringkasan keseluruhan.
 - Pencarian, filter jenis transaksi, pilihan bulan, dan halaman riwayat.
@@ -79,6 +80,8 @@ Alternatif melalui integrasi Git:
 4. Jalankan `npm run db:migrate` dan `npm run account:create` menggunakan koneksi database production dari komputer Anda. Migrasi tidak dijalankan otomatis saat build.
 5. Deploy. Build command: `npm run build`; output memakai pengaturan bawaan Next.js.
 6. Buka URL HTTPS Vercel dan masuk. Tambahkan halaman ke layar utama melalui menu browser jika diinginkan.
+
+Untuk memperbarui instalasi lama agar mendukung kategori custom dan Gaji pengeluaran, jalankan `npm run db:migrate` dengan `DATABASE_URL` database tujuan sebelum deploy kode baru. Migrasi `002_custom_categories.sql` mengganti batasan daftar kategori dengan validasi nama kategori 1–40 karakter, tanpa mengubah transaksi yang sudah ada. Jangan mengedit migrasi `001_initial.sql` yang sudah diterapkan.
 
 Tidak perlu VPS, komputer yang terus menyala, atau IP publik di rumah. Vercel menjalankan aplikasi; Neon menjalankan database. Periksa ketentuan paket yang dipilih: Vercel Hobby ditujukan untuk penggunaan pribadi/nonkomersial, dan layanan database memiliki kuota terpisah.
 

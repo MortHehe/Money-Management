@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { after, before, beforeEach, test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
@@ -16,10 +16,24 @@ const transaction = {
 };
 
 let database: PGlite;
+let migrations: { name: string; source: string }[];
 
 before(async () => {
+  const filenames = (await readdir("database"))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+
+  migrations = await Promise.all(
+    filenames.map(async (name) => ({
+      name,
+      source: await readFile(`database/${name}`, "utf8"),
+    })),
+  );
   database = new PGlite();
-  await database.exec(await readFile("database/001_initial.sql", "utf8"));
+
+  for (const migration of migrations) {
+    await database.exec(migration.source);
+  }
 });
 
 beforeEach(async () => {
@@ -126,11 +140,186 @@ test("pemulihan valid mengganti saldo awal dan transaksi hanya untuk akun yang d
   assert.equal(transactions.rows[0].count, 2);
 });
 
-test("constraint database menolak jumlah nol dan kategori yang tidak cocok", async () => {
-  await assert.rejects(mutate(firstAccount, 0, "create", { ...transaction, amount: 0 }));
-  await assert.rejects(
-    mutate(firstAccount, 0, "create", { ...transaction, category: "Belanja" }),
+test("migrasi kategori mempertahankan transaksi lama dan seluruh constraint lainnya", async () => {
+  const previousDatabase = new PGlite();
+  const constraintQuery =
+    "SELECT conname, pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid = 'transactions'::regclass ORDER BY conname";
+
+  try {
+    await previousDatabase.exec(migrations[0].source);
+    await previousDatabase.query(
+      "INSERT INTO accounts (id, email, password_hash) VALUES ($1, 'lama@example.test', 'hash')",
+      [firstAccount],
+    );
+    await previousDatabase.query(
+      "INSERT INTO books (account_id, name, opening_balance) VALUES ($1, 'Buku lama', 250000)",
+      [firstAccount],
+    );
+    await previousDatabase.query("SELECT mutate_book($1::uuid, 0, 'create', $2::jsonb)", [
+      firstAccount,
+      JSON.stringify(transaction),
+    ]);
+    const beforeRows = await previousDatabase.query("SELECT * FROM transactions");
+    const beforeBooks = await previousDatabase.query("SELECT * FROM books");
+    const beforeConstraints = await previousDatabase.query<{
+      conname: string;
+      definition: string;
+    }>(constraintQuery);
+
+    assert.ok(
+      beforeConstraints.rows.find(
+        (constraint) => constraint.conname === "transactions_check",
+      ),
+    );
+
+    for (const migration of migrations.slice(1)) {
+      await previousDatabase.exec(migration.source);
+    }
+
+    assert.deepEqual(
+      (await previousDatabase.query("SELECT * FROM transactions")).rows,
+      beforeRows.rows,
+    );
+    assert.deepEqual(
+      (await previousDatabase.query("SELECT * FROM books")).rows,
+      beforeBooks.rows,
+    );
+
+    const afterConstraints = await previousDatabase.query<{
+      conname: string;
+      definition: string;
+    }>(constraintQuery);
+
+    assert.equal(
+      afterConstraints.rows.some(
+        (constraint) => constraint.conname === "transactions_check",
+      ),
+      false,
+    );
+    assert.ok(
+      afterConstraints.rows.find(
+        (constraint) => constraint.conname === "transactions_category_check",
+      ),
+    );
+    assert.deepEqual(
+      afterConstraints.rows.filter(
+        (constraint) => constraint.conname !== "transactions_category_check",
+      ),
+      beforeConstraints.rows.filter(
+        (constraint) => constraint.conname !== "transactions_check",
+      ),
+    );
+
+    await previousDatabase.query("SELECT mutate_book($1::uuid, 1, 'update', $2::jsonb)", [
+      firstAccount,
+      JSON.stringify({ ...transaction, kind: "expense", category: "Gaji" }),
+    ]);
+  } finally {
+    await previousDatabase.close();
+  }
+});
+
+test("database menyimpan Gaji pengeluaran dan kategori bebas untuk kedua jenis transaksi", async () => {
+  const transactions = [
+    { ...transaction, kind: "expense", category: "Gaji" },
+    {
+      ...transaction,
+      id: "20000000-0000-4000-8000-000000000002",
+      kind: "income",
+      category: "Sewa rumah",
+    },
+    {
+      ...transaction,
+      id: "20000000-0000-4000-8000-000000000003",
+      kind: "expense",
+      category: "Bahan bangunan",
+    },
+  ];
+
+  for (const [revision, item] of transactions.entries()) {
+    await mutate(firstAccount, revision, "create", item);
+  }
+
+  const result = await database.query<{ kind: string; category: string }>(
+    "SELECT kind, category FROM transactions WHERE account_id = $1 ORDER BY id",
+    [firstAccount],
   );
+
+  assert.deepEqual(
+    result.rows,
+    transactions.map(({ kind, category }) => ({ kind, category })),
+  );
+});
+
+test("database mempertahankan kategori bebas saat edit dan pemulihan cadangan", async () => {
+  await mutate(firstAccount, 0, "create", transaction);
+  await mutate(firstAccount, 1, "update", {
+    ...transaction,
+    kind: "expense",
+    category: "Upah tukang",
+  });
+  const edited = await database.query<{ kind: string; category: string }>(
+    "SELECT kind, category FROM transactions WHERE account_id = $1",
+    [firstAccount],
+  );
+
+  assert.deepEqual(edited.rows, [{ kind: "expense", category: "Upah tukang" }]);
+
+  await mutate(firstAccount, 2, "restore", {
+    settings: { name: "Buku pulih", openingBalance: 100_000 },
+    transactions: [
+      { ...transaction, category: "Dana pembangunan" },
+      {
+        ...transaction,
+        id: "20000000-0000-4000-8000-000000000002",
+        kind: "expense",
+        category: "Upah tukang",
+      },
+    ],
+  });
+  const restored = await database.query<{ kind: string; category: string }>(
+    "SELECT kind, category FROM transactions WHERE account_id = $1 ORDER BY id",
+    [firstAccount],
+  );
+
+  assert.deepEqual(restored.rows, [
+    { kind: "income", category: "Dana pembangunan" },
+    { kind: "expense", category: "Upah tukang" },
+  ]);
+});
+
+test("database menolak kategori kosong, hanya whitespace, atau lebih dari 40 karakter", async () => {
+  for (const category of ["", "   ", "\t\n\r ", "a".repeat(41)]) {
+    await assert.rejects(
+      mutate(firstAccount, 0, "create", { ...transaction, category }),
+      /transactions_category_check/,
+    );
+  }
+
+  await mutate(firstAccount, 0, "create", { ...transaction, category: "a".repeat(40) });
+});
+
+test("constraint database tetap menolak nominal, jenis, tanggal, dan keterangan tidak valid", async () => {
+  const invalidFields = [
+    { amount: 0 },
+    { amount: -1 },
+    { amount: 1_000_000_000_000 },
+    { kind: "transfer" },
+    { date: "1999-12-31" },
+    { date: "2101-01-01" },
+    { description: "   " },
+  ];
+
+  for (const fields of invalidFields) {
+    await assert.rejects(
+      mutate(firstAccount, 0, "create", {
+        ...transaction,
+        category: "Kategori bebas",
+        ...fields,
+      }),
+    );
+  }
+
   const result = await database.query<{ revision: number }>(
     "SELECT revision FROM books WHERE account_id = $1",
     [firstAccount],
