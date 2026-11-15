@@ -11,7 +11,7 @@ Buku kas keluarga berbahasa Indonesia. Tampilan mengutamakan HP; laptop menampil
 - Pencarian, filter jenis transaksi, pilihan bulan, dan halaman riwayat.
 - Tab **Table View**: seluruh transaksi dari semua bulan dan tahun dalam satu tabel, dengan kolom Tanggal, Keterangan, Debit (uang masuk), Kredit (uang keluar), total keseluruhan, serta **Sisa uang** di bawah tabel. Urutan tanggal paling awal; semua baris langsung tersedia dengan menggulir tabel, tanpa filter bulan atau pembagian halaman.
 - Laporan enam bulan dan rincian pengeluaran menurut kategori.
-- Ekspor CSV yang bisa dibuka di Excel; cadangan JSON dan pemulihan atomik.
+- **Ekspor Word (.docx)** dari Buku kas, Table View, dan Laporan: dokumen berisi seluruh tabel dari semua periode dengan kolom Tanggal, Keterangan, Debit, Kredit, total keseluruhan, saldo awal, dan sisa uang seperti Table View. Filter bulan, pencarian, dan halaman riwayat tidak membatasi ekspor Word. Judul kolom berulang saat tabel berlanjut ke halaman berikutnya. Ekspor CSV bulanan untuk Excel tetap tersedia di Laporan; cadangan JSON dan pemulihan atomik.
 - Akun keluarga dengan sesi 30 hari, kata sandi scrypt, pembatasan percobaan masuk, serta pemeriksaan akun pada setiap operasi server.
 - Konflik perubahan dari dua perangkat dideteksi sebelum data ditimpa.
 - PWA untuk Android, iPhone, dan iPad: ikon Apple, tampilan mandiri, ruang aman untuk notch/home indicator, serta panduan pemasangan Safari di halaman masuk dan Pengaturan. Pencatatan cloud membutuhkan internet; belum ada sinkronisasi offline.

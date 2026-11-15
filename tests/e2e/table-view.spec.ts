@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { DEMO_STORAGE_KEY } from "../../src/lib/constants";
 import type { BookData, Transaction } from "../../src/lib/types";
+import { readDocx } from "../helpers/docx";
 
 function createTransaction(
   index: number,
@@ -48,6 +50,83 @@ async function openTable(page: Page, data = createBook()) {
   await page.goto("/demo");
   await page.getByRole("button", { name: "Table View", exact: true }).click();
 }
+
+async function downloadWord(page: Page) {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Ekspor Word (.docx)", exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(
+    /^catat-uang-semua-periode-\d{4}-\d{2}-\d{2}\.docx$/,
+  );
+  expect(await download.failure()).toBeNull();
+  return readDocx(await readFile((await download.path())!));
+}
+
+test("ekspor Word dari Table View, Buku kas, dan Laporan memuat seluruh tabel yang sama", async ({
+  page,
+}, testInfo) => {
+  await openTable(page);
+  const table = page.locator(".cash-table");
+  const expectedRows = await table
+    .locator("tr")
+    .evaluateAll((rows) =>
+      rows.map((row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+      ),
+    );
+  const document = await downloadWord(page);
+  expect(document.rows).toEqual(expectedRows);
+  expect(document.paragraphs).toContain("Saldo awal buku kas: Rp 100.000");
+  expect(document.paragraphs).toContain("Sisa uang: Rp 1.550.000");
+  expect(document.paragraphs).toContain("29 transaksi · Semua periode");
+  await page.screenshot({
+    path: `artifacts/${testInfo.project.name}-word-export.png`,
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "Buku kas", exact: true }).click();
+  await page.getByLabel("Bulan laporan").selectOption("2026-02");
+  await page.getByLabel("Cari transaksi").fill("Catatan 1");
+  await page.getByLabel("Filter jenis transaksi").selectOption("expense");
+  expect((await downloadWord(page)).rows).toEqual(expectedRows);
+
+  await page.getByRole("button", { name: "Laporan", exact: true }).click();
+  expect((await downloadWord(page)).rows).toEqual(expectedRows);
+  await expect(
+    page.getByRole("button", { name: "Unduh laporan CSV / Excel" }),
+  ).toBeVisible();
+});
+
+test("Word tetap bisa diunduh untuk buku kosong", async ({ page }) => {
+  const data = createBook();
+  data.transactions = [];
+  await openTable(page, data);
+  const document = await downloadWord(page);
+  expect(document.rows).toEqual([
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["Belum ada transaksi dalam buku kas."],
+    ["Total keseluruhan", "0", "0"],
+  ]);
+  expect(document.paragraphs).toContain("Sisa uang: Rp 100.000");
+});
+
+test("kegagalan unduhan Word menampilkan pesan dan dapat dicoba kembali", async ({
+  page,
+}) => {
+  await openTable(page);
+  await page.evaluate(() => {
+    const original = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (...args) => {
+      URL.createObjectURL = original;
+      throw new Error(`Simulasi kegagalan unduhan ${args.length}`);
+    };
+  });
+  await page.getByRole("button", { name: "Ekspor Word (.docx)", exact: true }).click();
+  const alert = page.locator(".book-export").getByRole("alert");
+  await expect(alert).toHaveText("Dokumen Word gagal dibuat. Coba ekspor kembali.");
+  expect((await downloadWord(page)).rows).toHaveLength(31);
+  await expect(alert).toHaveCount(0);
+});
 
 test("Table View menampilkan semua baris lintas bulan dan tahun dengan total keseluruhan", async ({
   page,

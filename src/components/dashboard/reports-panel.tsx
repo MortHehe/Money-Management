@@ -4,8 +4,17 @@ import { formatMoney, formatMonth, shiftMonth } from "@/lib/format";
 import { createCsv, downloadFile } from "@/lib/backup";
 import type { BookData } from "@/lib/types";
 import { ExpenseBreakdown } from "./expense-breakdown";
+import { BookExportButton } from "@/components/transactions/book-export-button";
 
-export function ReportsPanel({ data, month }: { data: BookData; month: string }) {
+export function ReportsPanel({
+  data,
+  month,
+  busy,
+}: {
+  data: BookData;
+  month: string;
+  busy: boolean;
+}) {
   const summary = summarizeMonth(data, month);
   const months = Array.from({ length: 6 }, (_, index) => shiftMonth(month, index - 5));
   const history = months.map((value) => ({
@@ -43,8 +52,10 @@ export function ReportsPanel({ data, month }: { data: BookData; month: string })
             <dd>{formatMoney(summary.closing)}</dd>
           </div>
         </dl>
+        <BookExportButton data={data} disabled={busy} className="report-word-export" />
         <button
           className="button button-secondary full-width"
+          disabled={busy}
           onClick={() =>
             downloadFile(
               createCsv(data, month),

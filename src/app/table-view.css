@@ -1,4 +1,33 @@
 /* Tampilan empat kolom memakai ruang sendiri agar mudah dibaca di layar kecil. */
+.book-export {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.book-export > .button {
+  white-space: normal;
+}
+
+.book-export small {
+  color: #59665e;
+  font-size: 12px;
+}
+
+.book-export p[role="alert"] {
+  color: var(--orange);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ledger-panel > .panel-heading {
+  flex-wrap: wrap;
+}
+
+.report-word-export {
+  margin: 0 24px 16px;
+}
+
 .cash-table-heading {
   flex-wrap: wrap;
 }

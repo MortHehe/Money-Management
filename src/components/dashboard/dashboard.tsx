@@ -261,7 +261,7 @@ export function Dashboard({
           </div>
         </>
       )}
-      {screen === "table" && <TableView data={data} />}
+      {screen === "table" && <TableView data={data} busy={disabled} />}
       {screen === "reports" && (
         <section className="monthly-section" aria-labelledby="monthly-report-title">
           <div className="section-topline period-filter">
@@ -272,7 +272,7 @@ export function Dashboard({
               transactions={data.transactions}
             />
           </div>
-          <ReportsPanel data={data} month={month} />
+          <ReportsPanel data={data} month={month} busy={disabled} />
         </section>
       )}
       {screen === "settings" && (

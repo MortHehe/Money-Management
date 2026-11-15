@@ -4,17 +4,16 @@ import { useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
   List,
   Search,
   Table2,
   NotebookPen,
 } from "lucide-react";
 import { buildLedger } from "@/lib/ledger";
-import { createCsv, downloadFile } from "@/lib/backup";
 import type { BookData, Transaction } from "@/lib/types";
 
 import { TransactionCard, TransactionRow } from "./transaction-item";
+import { BookExportButton } from "./book-export-button";
 
 interface TransactionListProps {
   data: BookData;
@@ -49,14 +48,6 @@ export function TransactionList({
   const currentPage = Math.min(page, pageCount - 1);
   const visibleRows = rows.slice(currentPage * 8, (currentPage + 1) * 8);
 
-  function exportMonth() {
-    downloadFile(
-      createCsv(data, month),
-      `catat-uang-${month}.csv`,
-      "text/csv;charset=utf-8",
-    );
-  }
-
   return (
     <section className="panel ledger-panel">
       <div className="panel-heading">
@@ -66,15 +57,7 @@ export function TransactionList({
           </h2>
           <p>Setiap pemasukan dan pengeluaran, tercatat rapi.</p>
         </div>
-        <button
-          className="button button-secondary export-button"
-          onClick={exportMonth}
-          disabled={busy}
-          title="Ekspor seluruh transaksi pada bulan yang dipilih"
-        >
-          <Download size={17} />
-          <span>Ekspor bulan ini</span>
-        </button>
+        <BookExportButton data={data} disabled={busy} />
       </div>
       <div className="table-toolbar">
         <div className="search-field">

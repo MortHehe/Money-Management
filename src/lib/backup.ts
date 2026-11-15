@@ -63,11 +63,17 @@ export function createCsv(data: BookData, month: string): string {
   );
 }
 
-export function downloadFile(content: string, filename: string, type: string): void {
+export function downloadFile(
+  content: string | Blob,
+  filename: string,
+  type: string,
+): void {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

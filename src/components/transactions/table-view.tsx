@@ -2,12 +2,14 @@ import { Wallet } from "lucide-react";
 import { formatMoney, formatNumber, formatTableDate } from "@/lib/format";
 import { compareTransactions, summarizeTable } from "@/lib/ledger";
 import type { BookData } from "@/lib/types";
+import { BookExportButton } from "./book-export-button";
 
 interface TableViewProps {
   data: BookData;
+  busy: boolean;
 }
 
-export function TableView({ data }: TableViewProps) {
+export function TableView({ data, busy }: TableViewProps) {
   // Salin sebelum mengurutkan agar urutan data bersama di Buku kas tetap utuh.
   const rows = [...data.transactions].sort(compareTransactions);
   const summary = summarizeTable(data);
@@ -21,6 +23,7 @@ export function TableView({ data }: TableViewProps) {
           <h2 id="cash-table-title">Seluruh transaksi</h2>
           <p>Debit = uang masuk · Kredit = uang keluar</p>
         </div>
+        <BookExportButton data={data} disabled={busy} />
       </div>
 
       <p className="cash-table-hint" id="cash-table-hint">
