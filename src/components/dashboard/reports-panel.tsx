@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { summarizeMonth } from "@/lib/ledger";
 import { formatMoney, formatMonth, shiftMonth } from "@/lib/format";
 import type { BookData } from "@/lib/types";
+import type { ExportScope } from "@/lib/export";
 import { ExpenseBreakdown } from "./expense-breakdown";
 import { BookExportButton } from "@/components/transactions/book-export-button";
 
@@ -10,12 +11,16 @@ export function ReportsPanel({
   month,
   busy,
   exportCategory,
+  exportScope,
+  onExportScopeChange,
   onExportCategoryChange,
 }: {
   data: BookData;
   month: string;
   busy: boolean;
   exportCategory: string;
+  exportScope: ExportScope;
+  onExportScopeChange: (scope: ExportScope) => void;
   onExportCategoryChange: (category: string) => void;
 }) {
   const summary = summarizeMonth(data, month);
@@ -32,13 +37,22 @@ export function ReportsPanel({
         <div className="panel-heading">
           <div>
             <h2>Ringkasan {formatMonth(month)}</h2>
-            <p>Saldo awal bulan membawa sisa bulan sebelumnya.</p>
+            <p>
+              Saldo bawaan bulan mencakup sisa bulan sebelumnya. Modal awal tetap dari
+              Pengaturan.
+            </p>
           </div>
         </div>
         <dl className="report-lines">
           <div>
-            <dt>Saldo awal bulan</dt>
-            <dd>{formatMoney(summary.opening)}</dd>
+            <dt>Modal awal buku kas</dt>
+            <dd data-testid="report-initial-capital">
+              {formatMoney(data.settings.openingBalance)}
+            </dd>
+          </div>
+          <div>
+            <dt>Saldo bawaan bulan</dt>
+            <dd data-testid="report-carried-balance">{formatMoney(summary.opening)}</dd>
           </div>
           <div>
             <dt>Uang masuk</dt>
@@ -58,6 +72,8 @@ export function ReportsPanel({
         <BookExportButton
           data={data}
           month={month}
+          scope={exportScope}
+          onScopeChange={onExportScopeChange}
           category={exportCategory}
           onCategoryChange={onExportCategoryChange}
           disabled={busy}

@@ -18,7 +18,7 @@ export function SummaryCards({ data }: { data: BookData }) {
         </strong>
         <div className="balance-caption">
           <span className="status-dot" />
-          Saldo awal + seluruh transaksi
+          Modal awal + uang masuk − uang keluar
         </div>
         <div className="balance-decoration" aria-hidden="true" />
       </article>

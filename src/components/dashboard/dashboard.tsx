@@ -16,6 +16,7 @@ import { useBook } from "@/hooks/use-book";
 import { useOnline } from "@/hooks/use-online";
 import { getToday, formatMoney } from "@/lib/format";
 import { summarizeMonth } from "@/lib/ledger";
+import type { ExportScope } from "@/lib/export";
 import type {
   BookData,
   Screen,
@@ -74,6 +75,7 @@ export function Dashboard({
   const [screen, setScreen] = useState<Screen>("ledger");
   const [month, setMonth] = useState(() => getToday().slice(0, 7));
   const [exportCategory, setExportCategory] = useState("");
+  const [exportScope, setExportScope] = useState<ExportScope>("month");
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [deletion, setDeletion] = useState<{
     transaction: Transaction;
@@ -233,6 +235,8 @@ export function Dashboard({
                 data={data}
                 month={month}
                 exportCategory={exportCategory}
+                exportScope={exportScope}
+                onExportScopeChange={setExportScope}
                 onExportCategoryChange={setExportCategory}
                 busy={disabled}
                 onEdit={(transaction) => openEditor(transaction.kind, transaction)}
@@ -243,7 +247,7 @@ export function Dashboard({
               />
               <div className="month-balance-note">
                 <span>
-                  Saldo awal bulan <strong>{formatMoney(summary.opening)}</strong>
+                  Saldo bawaan bulan <strong>{formatMoney(summary.opening)}</strong>
                 </span>
                 <span>
                   Saldo akhir bulan <strong>{formatMoney(summary.closing)}</strong>
@@ -271,6 +275,8 @@ export function Dashboard({
           month={month}
           onMonthChange={setMonth}
           exportCategory={exportCategory}
+          exportScope={exportScope}
+          onExportScopeChange={setExportScope}
           onExportCategoryChange={setExportCategory}
         />
       )}
@@ -289,6 +295,8 @@ export function Dashboard({
             month={month}
             busy={disabled}
             exportCategory={exportCategory}
+            exportScope={exportScope}
+            onExportScopeChange={setExportScope}
             onExportCategoryChange={setExportCategory}
           />
         </section>

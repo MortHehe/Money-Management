@@ -2,6 +2,7 @@ import { Wallet } from "lucide-react";
 import { formatMoney, formatNumber, formatTableDate } from "@/lib/format";
 import { compareTransactions, summarizeBook } from "@/lib/ledger";
 import type { BookData } from "@/lib/types";
+import type { ExportScope } from "@/lib/export";
 import { BookExportButton } from "./book-export-button";
 
 interface TableViewProps {
@@ -10,6 +11,8 @@ interface TableViewProps {
   month: string;
   onMonthChange: (month: string) => void;
   exportCategory: string;
+  exportScope: ExportScope;
+  onExportScopeChange: (scope: ExportScope) => void;
   onExportCategoryChange: (category: string) => void;
 }
 
@@ -19,6 +22,8 @@ export function TableView({
   month,
   onMonthChange,
   exportCategory,
+  exportScope,
+  onExportScopeChange,
   onExportCategoryChange,
 }: TableViewProps) {
   // Salin sebelum mengurutkan agar urutan data bersama di Buku kas tetap utuh.
@@ -35,6 +40,8 @@ export function TableView({
         <BookExportButton
           data={data}
           month={month}
+          scope={exportScope}
+          onScopeChange={onExportScopeChange}
           category={exportCategory}
           onCategoryChange={onExportCategoryChange}
           onMonthChange={onMonthChange}
@@ -120,7 +127,7 @@ export function TableView({
 
       <div className="cash-table-balance">
         <p className="cash-table-opening">
-          Saldo awal buku kas{" "}
+          Modal awal buku kas{" "}
           <strong data-testid="table-opening-balance">
             {formatMoney(summary.opening)}
           </strong>
@@ -147,7 +154,7 @@ export function TableView({
             {formatMoney(summary.closing)}
           </strong>
         </div>
-        <p>Sisa uang = saldo awal buku kas + uang masuk − uang keluar.</p>
+        <p>Sisa uang = modal awal buku kas + uang masuk − uang keluar.</p>
       </div>
     </section>
   );

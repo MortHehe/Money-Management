@@ -38,7 +38,7 @@ export function escapeCsvCell(value: string | number): string {
   return `"${safeValue.replaceAll('"', '""')}"`;
 }
 
-export function createCsv(data: BookData, month: string, category = ""): string {
+export function createCsv(data: BookData, period: string, category = ""): string {
   const header = [
     "Tanggal",
     "Keterangan",
@@ -47,7 +47,7 @@ export function createCsv(data: BookData, month: string, category = ""): string 
     "Uang keluar",
     "Saldo",
   ];
-  const rows = filterExportTransactions(buildLedger(data), month, category).map(
+  const rows = filterExportTransactions(buildLedger(data), period, category).map(
     (item) => [
       item.date,
       item.description,

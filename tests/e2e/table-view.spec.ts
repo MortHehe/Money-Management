@@ -48,7 +48,14 @@ async function openTable(page: Page, data = createBook()) {
     { key: DEMO_STORAGE_KEY, book: data },
   );
   await page.goto("/demo");
+  await expect(
+    page.getByRole("button", { name: "Uang keluar", exact: true }),
+  ).toBeEnabled();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
   await page.getByRole("button", { name: "Table View", exact: true }).click();
+  await expect(page.locator(".cash-table")).toBeVisible();
 }
 
 async function downloadWord(page: Page, filename = "catat-uang-2026-02.docx") {
@@ -82,7 +89,8 @@ test("ekspor Word mengikuti bulan dan kategori pilihan pada Table View, Buku kas
   ];
   const document = await downloadWord(page);
   expect(document.rows).toEqual(expectedRows);
-  expect(document.paragraphs).toContain("Saldo awal bulan: Rp 600.000");
+  expect(document.paragraphs).toContain("Modal awal buku kas: Rp 100.000");
+  expect(document.paragraphs).toContain("Saldo bawaan bulan: Rp 600.000");
   expect(document.paragraphs).toContain("Saldo akhir bulan: Rp 551.000");
   expect(document.paragraphs).toContain("27 transaksi · Februari 2026 · Semua kategori");
   await expect(table.locator("tbody tr")).toHaveCount(29);
@@ -142,6 +150,70 @@ test("ekspor Word mengikuti bulan dan kategori pilihan pada Table View, Buku kas
     ["Total bulan ini", "999.000", "0"],
   ]);
   expect(march.paragraphs).toContain("Saldo akhir bulan: Rp 1.550.000");
+});
+
+test("semua periode dan kategori diterapkan pada Word serta CSV di seluruh tab tanpa menaikkan modal awal", async ({
+  page,
+}) => {
+  const data = createBook();
+  data.transactions.find((item) => item.description === "Catatan 100")!.description =
+    "Saldo awal";
+  await openTable(page, data);
+  await page.getByLabel("Periode ekspor", { exact: true }).selectOption("all");
+  await expect(page.getByLabel("Bulan ekspor", { exact: true })).toHaveCount(0);
+  const full = await downloadWord(page, "catat-uang-semua-periode.docx");
+  expect(full.rows).toHaveLength(31);
+  expect(full.rows.at(-1)).toEqual(["Total keseluruhan", "1.525.000", "75.000"]);
+  expect(full.paragraphs).toContain("Modal awal buku kas: Rp 100.000");
+  expect(full.paragraphs).toContain("Sisa uang: Rp 1.550.000");
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 100.000");
+  await expect(page.getByTestId("table-income")).toHaveText("Rp 1.525.000");
+
+  await page.getByLabel("Kategori ekspor", { exact: true }).selectOption("Gaji");
+  const salary = await downloadWord(page, "catat-uang-semua-periode-Gaji.docx");
+  expect(salary.rows).toHaveLength(30);
+  expect(salary.rows[1]).toEqual(["31/12/2025", "Saldo awal", "500.000", "—"]);
+  expect(salary.rows.at(-2)).toEqual(["01/03/2026", "Catatan 101", "999.000", "—"]);
+  expect(salary.rows.at(-1)).toEqual(["Total kategori", "1.525.000", "0"]);
+  expect(salary.paragraphs).toContain("28 transaksi · Semua periode · Gaji");
+  expect(salary.paragraphs).toContain("Selisih kategori: Rp 1.525.000");
+
+  await page.getByRole("button", { name: "Buku kas", exact: true }).click();
+  await expect(page.getByLabel("Periode ekspor", { exact: true })).toHaveValue("all");
+  await page.getByLabel("Bulan laporan").selectOption("2026-02");
+  expect((await downloadWord(page, "catat-uang-semua-periode-Gaji.docx")).rows).toEqual(
+    salary.rows,
+  );
+
+  await page.getByRole("button", { name: "Laporan", exact: true }).click();
+  await expect(page.getByTestId("report-initial-capital")).toHaveText("Rp 100.000");
+  await expect(page.getByTestId("report-carried-balance")).toHaveText("Rp 600.000");
+  await expect(page.getByLabel("Periode ekspor", { exact: true })).toHaveValue("all");
+  expect((await downloadWord(page, "catat-uang-semua-periode-Gaji.docx")).rows).toEqual(
+    salary.rows,
+  );
+  const csvPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Unduh laporan CSV / Excel" }).click();
+  const csvDownload = await csvPromise;
+  expect(csvDownload.suggestedFilename()).toBe("catat-uang-semua-periode-Gaji.csv");
+  const csv = await readFile((await csvDownload.path())!, "utf8");
+  expect(csv.split("\r\n")).toHaveLength(29);
+  expect(csv).toContain('"2025-12-31";"Saldo awal"');
+  expect(csv).toContain('"2026-03-01";"Catatan 101"');
+  expect(csv).not.toContain('"Catatan 27"');
+
+  await page.getByLabel("Kategori ekspor", { exact: true }).selectOption("");
+  const allCsvPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Unduh laporan CSV / Excel" }).click();
+  const allCsv = await allCsvPromise;
+  expect(allCsv.suggestedFilename()).toBe("catat-uang-semua-periode.csv");
+  expect((await readFile((await allCsv.path())!, "utf8")).split("\r\n")).toHaveLength(30);
+  await page.getByLabel("Periode ekspor", { exact: true }).selectOption("month");
+  const monthly = await downloadWord(page);
+  expect(monthly.rows.at(-1)).toEqual(["Total bulan ini", "26.000", "75.000"]);
+  expect(monthly.paragraphs).toContain("Modal awal buku kas: Rp 100.000");
+  expect(monthly.paragraphs).toContain("Saldo bawaan bulan: Rp 600.000");
+  expect(monthly.paragraphs).toContain("Saldo akhir bulan: Rp 551.000");
 });
 
 test("ekspor Word mengenali kategori custom dan kategori yang sama pada pemasukan serta pengeluaran", async ({
@@ -383,7 +455,8 @@ test("modal awal dari Pengaturan terpisah dari debit di tabel dan ekspor Word", 
   );
   await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-07");
   const document = await downloadWord(page, "catat-uang-2026-07.docx");
-  expect(document.paragraphs).toContain("Saldo awal bulan: Rp 100.000");
+  expect(document.paragraphs).toContain("Modal awal buku kas: Rp 100.000");
+  expect(document.paragraphs).toContain("Saldo bawaan bulan: Rp 100.000");
   expect(document.paragraphs).toContain("Uang masuk: Rp 500.000");
   expect(document.paragraphs).toContain("Saldo akhir bulan: Rp 525.000");
   expect(document.rows.at(-1)).toEqual(["Total bulan ini", "500.000", "75.000"]);
@@ -427,6 +500,10 @@ test("manifest, ikon Apple, viewport, dan panduan Safari tersedia", async ({
   request,
 }) => {
   await openTable(page);
+  await expect(page.locator('meta[name="catat-uang-version"]')).toHaveAttribute(
+    "content",
+    "1.1.0",
+  );
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifestHref).toBeTruthy();
   const manifestResponse = await request.get(manifestHref!);

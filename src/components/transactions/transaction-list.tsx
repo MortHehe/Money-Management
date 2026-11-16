@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { buildLedger } from "@/lib/ledger";
 import type { BookData, Transaction } from "@/lib/types";
+import type { ExportScope } from "@/lib/export";
 
 import { TransactionCard, TransactionRow } from "./transaction-item";
 import { BookExportButton } from "./book-export-button";
@@ -19,6 +20,8 @@ interface TransactionListProps {
   data: BookData;
   month: string;
   exportCategory: string;
+  exportScope: ExportScope;
+  onExportScopeChange: (scope: ExportScope) => void;
   onExportCategoryChange: (category: string) => void;
   busy: boolean;
   onEdit: (transaction: Transaction) => void;
@@ -29,6 +32,8 @@ export function TransactionList({
   data,
   month,
   exportCategory,
+  exportScope,
+  onExportScopeChange,
   onExportCategoryChange,
   busy,
   onEdit,
@@ -64,6 +69,8 @@ export function TransactionList({
         <BookExportButton
           data={data}
           month={month}
+          scope={exportScope}
+          onScopeChange={onExportScopeChange}
           category={exportCategory}
           onCategoryChange={onExportCategoryChange}
           disabled={busy}

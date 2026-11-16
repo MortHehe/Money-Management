@@ -13,9 +13,8 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import { formatMoney, formatMonth, formatNumber, formatTableDate } from "./format";
-import { compareTransactions, summarizeBook, summarizeMonth } from "./ledger";
-import { filterExportTransactions } from "./export";
+import { formatMoney, formatNumber, formatTableDate } from "./format";
+import { ALL_EXPORT_PERIOD, summarizeExport } from "./export";
 import type { BookData } from "./types";
 
 // Lebar A4 dikurangi margin 2 cm di setiap sisi, dalam twip.
@@ -60,25 +59,16 @@ function balanceLine(label: string, amount: number, prominent = false): Paragrap
   });
 }
 
-/** Empat kolom Table View untuk bulan dan kategori yang dipilih. */
+/** Empat kolom Table View untuk periode dan kategori yang dipilih. */
 export async function createBookDocument(
   data: BookData,
-  month: string,
+  period: string,
   category = "",
 ): Promise<Blob> {
-  const transactions = filterExportTransactions(data.transactions, month, category).sort(
-    compareTransactions,
-  );
-  const summary = summarizeBook({
-    ...data,
-    settings: {
-      ...data.settings,
-      openingBalance: category ? 0 : summarizeMonth(data, month).opening,
-    },
-    transactions,
-  });
-  const periodLabel = formatMonth(month);
-  const scopeLabel = `${periodLabel} · ${category || "Semua kategori"}`;
+  const summary = summarizeExport(data, period, category);
+  const { transactions } = summary;
+  const allPeriods = period === ALL_EXPORT_PERIOD;
+  const scopeLabel = `${summary.periodLabel} · ${category || "Semua kategori"}`;
   const table = new Table({
     width: { size: TABLE_WIDTH, type: WidthType.DXA },
     columnWidths: COLUMN_WIDTHS,
@@ -126,7 +116,7 @@ export async function createBookDocument(
       new TableRow({
         cantSplit: true,
         children: [
-          tableCell(category ? "Total kategori" : "Total bulan ini", 0, {
+          tableCell(summary.totalLabel, 0, {
             span: 2,
             bold: true,
             fill: "EDF3EB",
@@ -173,19 +163,39 @@ export async function createBookDocument(
             text: `${summary.count} transaksi · ${scopeLabel}`,
             spacing: { before: 160, after: 160 },
           }),
-          ...(!category ? [balanceLine("Saldo awal bulan", summary.opening)] : []),
+          ...(!category
+            ? [
+                balanceLine("Modal awal buku kas", summary.capital),
+                ...(!allPeriods
+                  ? [balanceLine("Saldo bawaan bulan", summary.carriedBalance)]
+                  : []),
+              ]
+            : []),
           balanceLine("Uang masuk", summary.income),
           balanceLine("Uang keluar", summary.expense),
           balanceLine(
-            category ? "Selisih kategori" : "Saldo akhir bulan",
+            category
+              ? "Selisih kategori"
+              : allPeriods
+                ? "Sisa uang"
+                : "Saldo akhir bulan",
             summary.closing,
             true,
           ),
           new Paragraph({
             text: category
               ? "Selisih kategori = uang masuk − uang keluar pada kategori yang dipilih."
-              : "Saldo akhir bulan = saldo awal bulan + uang masuk − uang keluar.",
+              : allPeriods
+                ? "Sisa uang = modal awal buku kas + uang masuk − uang keluar."
+                : "Saldo akhir bulan = saldo bawaan bulan + uang masuk − uang keluar.",
           }),
+          ...(!category && !allPeriods
+            ? [
+                new Paragraph({
+                  text: "Saldo bawaan bulan sudah mencakup modal awal dan transaksi sebelum bulan ini. Modal awal buku kas tetap sesuai Pengaturan.",
+                }),
+              ]
+            : []),
         ],
       },
     ],

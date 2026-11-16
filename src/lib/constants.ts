@@ -1,6 +1,7 @@
 import type { TransactionKind } from "./types";
 
 export const APP_NAME = "Catat Uang";
+export const APP_VERSION = "1.1.0";
 export const MAX_AMOUNT = 999_999_999_999;
 export const MAX_TRANSACTIONS = 5_000;
 export const MAX_BACKUP_BYTES = 3_000_000;

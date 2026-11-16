@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { APP_VERSION } from "@/lib/constants";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import "./readability.css";
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Catat Uang" },
   // Next.js menghasilkan mobile-web-app-capable; pertahankan juga penanda Safari lama.
-  other: { "apple-mobile-web-app-capable": "yes" },
+  other: { "apple-mobile-web-app-capable": "yes", "catat-uang-version": APP_VERSION },
   robots: { index: false, follow: false },
 };
 
