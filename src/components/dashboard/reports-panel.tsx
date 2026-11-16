@@ -1,7 +1,6 @@
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { summarizeMonth } from "@/lib/ledger";
 import { formatMoney, formatMonth, shiftMonth } from "@/lib/format";
-import { createCsv, downloadFile } from "@/lib/backup";
 import type { BookData } from "@/lib/types";
 import { ExpenseBreakdown } from "./expense-breakdown";
 import { BookExportButton } from "@/components/transactions/book-export-button";
@@ -10,10 +9,14 @@ export function ReportsPanel({
   data,
   month,
   busy,
+  exportCategory,
+  onExportCategoryChange,
 }: {
   data: BookData;
   month: string;
   busy: boolean;
+  exportCategory: string;
+  onExportCategoryChange: (category: string) => void;
 }) {
   const summary = summarizeMonth(data, month);
   const months = Array.from({ length: 6 }, (_, index) => shiftMonth(month, index - 5));
@@ -52,21 +55,15 @@ export function ReportsPanel({
             <dd>{formatMoney(summary.closing)}</dd>
           </div>
         </dl>
-        <BookExportButton data={data} disabled={busy} className="report-word-export" />
-        <button
-          className="button button-secondary full-width"
+        <BookExportButton
+          data={data}
+          month={month}
+          category={exportCategory}
+          onCategoryChange={onExportCategoryChange}
           disabled={busy}
-          onClick={() =>
-            downloadFile(
-              createCsv(data, month),
-              `laporan-${month}.csv`,
-              "text/csv;charset=utf-8",
-            )
-          }
-        >
-          <Download size={18} />
-          Unduh laporan CSV / Excel
-        </button>
+          className="report-word-export"
+          includeCsv
+        />
       </section>
       <ExpenseBreakdown transactions={data.transactions} month={month} />
       <section className="panel history-panel">

@@ -1,24 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
-import { downloadFile } from "@/lib/backup";
-import { getToday } from "@/lib/format";
+import { createCsv, downloadFile } from "@/lib/backup";
+import { formatMonth } from "@/lib/format";
+import { filterExportTransactions, getExportFilename } from "@/lib/export";
 import type { BookData } from "@/lib/types";
+import { MonthPicker } from "@/components/dashboard/month-picker";
 
 interface BookExportButtonProps {
   data: BookData;
+  month: string;
+  category: string;
+  onCategoryChange: (category: string) => void;
+  onMonthChange?: (month: string) => void;
+  includeCsv?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
 export function BookExportButton({
   data,
+  month,
+  category,
+  onCategoryChange,
+  onMonthChange,
+  includeCsv = false,
   disabled = false,
   className = "",
 }: BookExportButtonProps) {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const categoryId = useId();
+  const categories = [...new Set(data.transactions.map((item) => item.category))].sort(
+    (first, second) => first.localeCompare(second, "id"),
+  );
+  // Pertahankan kategori yang dipilih meski tidak lagi mempunyai transaksi.
+  if (category && !categories.includes(category)) categories.push(category);
+  const count = filterExportTransactions(data.transactions, month, category).length;
 
   async function exportDocument() {
     setExporting(true);
@@ -27,12 +46,8 @@ export function BookExportButton({
     try {
       // Muat pembuat dokumen hanya ketika pengguna meminta ekspor.
       const { createBookDocument } = await import("@/lib/document-export");
-      const document = await createBookDocument(data);
-      downloadFile(
-        document,
-        `catat-uang-semua-periode-${getToday()}.docx`,
-        document.type,
-      );
+      const document = await createBookDocument(data, month, category);
+      downloadFile(document, getExportFilename(month, category, "docx"), document.type);
     } catch {
       setError("Dokumen Word gagal dibuat. Coba ekspor kembali.");
     } finally {
@@ -42,13 +57,40 @@ export function BookExportButton({
 
   return (
     <div className={`book-export ${className}`}>
+      {onMonthChange && (
+        <div className="book-export-month">
+          <span>Bulan ekspor</span>
+          <MonthPicker
+            month={month}
+            onChange={onMonthChange}
+            transactions={data.transactions}
+            label="Bulan ekspor"
+          />
+        </div>
+      )}
+      <div className="book-export-category">
+        <label htmlFor={categoryId}>Kategori ekspor</label>
+        <select
+          id={categoryId}
+          value={category}
+          disabled={disabled || exporting}
+          onChange={(event) => onCategoryChange(event.target.value)}
+        >
+          <option value="">Semua kategori</option>
+          {categories.map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+      </div>
       <button
         type="button"
         className="button button-secondary"
         onClick={exportDocument}
         disabled={disabled || exporting}
         aria-busy={exporting}
-        title="Unduh seluruh transaksi dan ringkasan saldo seperti Table View (.docx), dari semua bulan dan tahun"
+        title={`Unduh tabel ${formatMonth(month)} · ${category || "Semua kategori"} (.docx)`}
       >
         {exporting ? (
           <LoaderCircle size={17} className="spin" aria-hidden="true" />
@@ -57,7 +99,26 @@ export function BookExportButton({
         )}
         <span>{exporting ? "Menyiapkan Word…" : "Ekspor Word (.docx)"}</span>
       </button>
-      <small>Semua transaksi · Semua periode</small>
+      <small aria-live="polite">
+        {count} transaksi · {formatMonth(month)} · {category || "Semua kategori"}
+      </small>
+      {includeCsv && (
+        <button
+          type="button"
+          className="button button-secondary"
+          disabled={disabled || exporting}
+          onClick={() =>
+            downloadFile(
+              createCsv(data, month, category),
+              getExportFilename(month, category, "csv"),
+              "text/csv;charset=utf-8",
+            )
+          }
+        >
+          <Download size={18} aria-hidden="true" />
+          Unduh laporan CSV / Excel
+        </button>
+      )}
       {error && <p role="alert">{error}</p>}
     </div>
   );

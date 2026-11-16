@@ -2,7 +2,43 @@
 .book-export {
   display: grid;
   gap: 6px;
+  min-width: 0;
+  width: 280px;
   max-width: 100%;
+}
+
+.book-export-category {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.book-export-category select {
+  font-size: 16px;
+}
+
+.book-export-category label {
+  margin: 0;
+  font-size: 13px;
+}
+
+.book-export-month {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.book-export-month .month-picker {
+  margin: 0;
+}
+
+.book-export-month .month-picker select {
+  flex: 1;
+  max-width: none;
+  font-size: 14px;
 }
 
 .book-export > .button {
@@ -12,6 +48,7 @@
 .book-export small {
   color: #59665e;
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .book-export p[role="alert"] {
@@ -25,6 +62,7 @@
 }
 
 .report-word-export {
+  width: auto;
   margin: 0 24px 16px;
 }
 

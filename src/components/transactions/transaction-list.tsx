@@ -18,6 +18,8 @@ import { BookExportButton } from "./book-export-button";
 interface TransactionListProps {
   data: BookData;
   month: string;
+  exportCategory: string;
+  onExportCategoryChange: (category: string) => void;
   busy: boolean;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
@@ -26,6 +28,8 @@ interface TransactionListProps {
 export function TransactionList({
   data,
   month,
+  exportCategory,
+  onExportCategoryChange,
   busy,
   onEdit,
   onDelete,
@@ -57,7 +61,13 @@ export function TransactionList({
           </h2>
           <p>Setiap pemasukan dan pengeluaran, tercatat rapi.</p>
         </div>
-        <BookExportButton data={data} disabled={busy} />
+        <BookExportButton
+          data={data}
+          month={month}
+          category={exportCategory}
+          onCategoryChange={onExportCategoryChange}
+          disabled={busy}
+        />
       </div>
       <div className="table-toolbar">
         <div className="search-field">

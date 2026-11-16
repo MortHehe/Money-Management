@@ -73,6 +73,7 @@ export function Dashboard({
   );
   const [screen, setScreen] = useState<Screen>("ledger");
   const [month, setMonth] = useState(() => getToday().slice(0, 7));
+  const [exportCategory, setExportCategory] = useState("");
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [deletion, setDeletion] = useState<{
     transaction: Transaction;
@@ -231,6 +232,8 @@ export function Dashboard({
                 key={month}
                 data={data}
                 month={month}
+                exportCategory={exportCategory}
+                onExportCategoryChange={setExportCategory}
                 busy={disabled}
                 onEdit={(transaction) => openEditor(transaction.kind, transaction)}
                 onDelete={(transaction) => {
@@ -261,7 +264,16 @@ export function Dashboard({
           </div>
         </>
       )}
-      {screen === "table" && <TableView data={data} busy={disabled} />}
+      {screen === "table" && (
+        <TableView
+          data={data}
+          busy={disabled}
+          month={month}
+          onMonthChange={setMonth}
+          exportCategory={exportCategory}
+          onExportCategoryChange={setExportCategory}
+        />
+      )}
       {screen === "reports" && (
         <section className="monthly-section" aria-labelledby="monthly-report-title">
           <div className="section-topline period-filter">
@@ -272,7 +284,13 @@ export function Dashboard({
               transactions={data.transactions}
             />
           </div>
-          <ReportsPanel data={data} month={month} busy={disabled} />
+          <ReportsPanel
+            data={data}
+            month={month}
+            busy={disabled}
+            exportCategory={exportCategory}
+            onExportCategoryChange={setExportCategory}
+          />
         </section>
       )}
       {screen === "settings" && (

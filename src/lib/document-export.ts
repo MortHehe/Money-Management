@@ -13,8 +13,9 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
-import { formatMoney, formatNumber, formatTableDate } from "./format";
-import { compareTransactions, summarizeTable } from "./ledger";
+import { formatMoney, formatMonth, formatNumber, formatTableDate } from "./format";
+import { compareTransactions, summarizeBook, summarizeMonth } from "./ledger";
+import { filterExportTransactions } from "./export";
 import type { BookData } from "./types";
 
 // Lebar A4 dikurangi margin 2 cm di setiap sisi, dalam twip.
@@ -59,12 +60,25 @@ function balanceLine(label: string, amount: number, prominent = false): Paragrap
   });
 }
 
-/** Dokumen berisi seluruh Table View, tanpa filter bulan, pencarian, atau halaman. */
-export async function createBookDocument(data: BookData): Promise<Blob> {
-  const transactions = [...data.transactions].sort(compareTransactions);
-  const summary = summarizeTable(data);
-  const hasOpeningTransaction = summary.openingFromTransactions > 0;
-  const incomeLabel = hasOpeningTransaction ? "Uang masuk lainnya" : "Uang masuk";
+/** Empat kolom Table View untuk bulan dan kategori yang dipilih. */
+export async function createBookDocument(
+  data: BookData,
+  month: string,
+  category = "",
+): Promise<Blob> {
+  const transactions = filterExportTransactions(data.transactions, month, category).sort(
+    compareTransactions,
+  );
+  const summary = summarizeBook({
+    ...data,
+    settings: {
+      ...data.settings,
+      openingBalance: category ? 0 : summarizeMonth(data, month).opening,
+    },
+    transactions,
+  });
+  const periodLabel = formatMonth(month);
+  const scopeLabel = `${periodLabel} · ${category || "Semua kategori"}`;
   const table = new Table({
     width: { size: TABLE_WIDTH, type: WidthType.DXA },
     columnWidths: COLUMN_WIDTHS,
@@ -104,7 +118,7 @@ export async function createBookDocument(data: BookData): Promise<Blob> {
         ? [
             new TableRow({
               children: [
-                tableCell("Belum ada transaksi dalam buku kas.", 0, { span: 4 }),
+                tableCell("Belum ada transaksi untuk pilihan ini.", 0, { span: 4 }),
               ],
             }),
           ]
@@ -112,7 +126,11 @@ export async function createBookDocument(data: BookData): Promise<Blob> {
       new TableRow({
         cantSplit: true,
         children: [
-          tableCell("Total keseluruhan", 0, { span: 2, bold: true, fill: "EDF3EB" }),
+          tableCell(category ? "Total kategori" : "Total bulan ini", 0, {
+            span: 2,
+            bold: true,
+            fill: "EDF3EB",
+          }),
           tableCell(formatNumber(summary.income), 2, { bold: true, fill: "EDF3EB" }),
           tableCell(formatNumber(summary.expense), 3, { bold: true, fill: "EDF3EB" }),
         ],
@@ -121,8 +139,8 @@ export async function createBookDocument(data: BookData): Promise<Blob> {
   });
   const document = new Document({
     creator: "Catat Uang",
-    title: `Buku kas ${data.settings.name}`,
-    description: "Seluruh transaksi dan ringkasan saldo dari semua periode.",
+    title: `Buku kas ${data.settings.name} ${scopeLabel}`,
+    description: `Transaksi dan ringkasan ${scopeLabel}.`,
     styles: {
       default: {
         document: {
@@ -145,33 +163,28 @@ export async function createBookDocument(data: BookData): Promise<Blob> {
         },
         children: [
           new Paragraph({ text: data.settings.name, heading: HeadingLevel.TITLE }),
-          new Paragraph({ text: "Seluruh transaksi · Semua periode", keepNext: true }),
+          new Paragraph({ text: scopeLabel, keepNext: true }),
           new Paragraph({
             text: "Angka dalam rupiah. Debit = uang masuk · Kredit = uang keluar.",
             keepNext: true,
           }),
           table,
           new Paragraph({
-            text: `${summary.count} transaksi · Semua periode`,
+            text: `${summary.count} transaksi · ${scopeLabel}`,
             spacing: { before: 160, after: 160 },
           }),
-          balanceLine("Saldo awal buku kas", summary.openingTotal),
-          ...(hasOpeningTransaction
-            ? [
-                new Paragraph({
-                  text:
-                    (summary.opening > 0
-                      ? `Terdiri dari ${formatMoney(summary.opening)} dari Pengaturan dan ${formatMoney(summary.openingFromTransactions)} dari transaksi “Saldo awal”.`
-                      : "Saldo awal berasal dari transaksi “Saldo awal” pada kolom debit.") +
-                    " Saldo awal yang tercatat di debit dihitung sekali.",
-                }),
-              ]
-            : []),
-          balanceLine(incomeLabel, summary.otherIncome),
+          ...(!category ? [balanceLine("Saldo awal bulan", summary.opening)] : []),
+          balanceLine("Uang masuk", summary.income),
           balanceLine("Uang keluar", summary.expense),
-          balanceLine("Sisa uang", summary.closing, true),
+          balanceLine(
+            category ? "Selisih kategori" : "Saldo akhir bulan",
+            summary.closing,
+            true,
+          ),
           new Paragraph({
-            text: `Sisa uang = saldo awal buku kas + ${incomeLabel.toLowerCase()} − uang keluar.`,
+            text: category
+              ? "Selisih kategori = uang masuk − uang keluar pada kategori yang dipilih."
+              : "Saldo akhir bulan = saldo awal bulan + uang masuk − uang keluar.",
           }),
         ],
       },

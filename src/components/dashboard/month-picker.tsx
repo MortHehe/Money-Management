@@ -6,9 +6,15 @@ interface MonthPickerProps {
   month: string;
   onChange: (month: string) => void;
   transactions: Transaction[];
+  label?: string;
 }
 
-export function MonthPicker({ month, onChange, transactions }: MonthPickerProps) {
+export function MonthPicker({
+  month,
+  onChange,
+  transactions,
+  label = "Bulan laporan",
+}: MonthPickerProps) {
   const months = new Set(transactions.map((item) => item.date.slice(0, 7)));
 
   for (let offset = -12; offset <= 1; offset += 1) {
@@ -27,7 +33,7 @@ export function MonthPicker({ month, onChange, transactions }: MonthPickerProps)
       </button>
       <CalendarDays size={17} className="month-icon" />
       <select
-        aria-label="Bulan laporan"
+        aria-label={label}
         value={month}
         onChange={(event) => onChange(event.target.value)}
       >

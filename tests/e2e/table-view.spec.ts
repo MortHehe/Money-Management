@@ -51,69 +51,146 @@ async function openTable(page: Page, data = createBook()) {
   await page.getByRole("button", { name: "Table View", exact: true }).click();
 }
 
-async function downloadWord(page: Page) {
+async function downloadWord(page: Page, filename = "catat-uang-2026-02.docx") {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Ekspor Word (.docx)", exact: true }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(
-    /^catat-uang-semua-periode-\d{4}-\d{2}-\d{2}\.docx$/,
-  );
+  expect(download.suggestedFilename()).toBe(filename);
   expect(await download.failure()).toBeNull();
   return readDocx(await readFile((await download.path())!));
 }
 
-test("ekspor Word dari Table View, Buku kas, dan Laporan memuat seluruh tabel yang sama", async ({
+test("ekspor Word mengikuti bulan dan kategori pilihan pada Table View, Buku kas, dan Laporan", async ({
   page,
 }, testInfo) => {
   await openTable(page);
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-02");
   const table = page.locator(".cash-table");
-  const expectedRows = await table
-    .locator("tr")
+  const monthRows = await table
+    .locator("tbody tr")
     .evaluateAll((rows) =>
-      rows.map((row) =>
-        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
-      ),
+      rows
+        .filter((row) => row.textContent?.includes("/02/2026"))
+        .map((row) =>
+          Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent),
+        ),
     );
+  const expectedRows = [
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ...monthRows,
+    ["Total bulan ini", "26.000", "75.000"],
+  ];
   const document = await downloadWord(page);
   expect(document.rows).toEqual(expectedRows);
-  expect(document.paragraphs).toContain("Saldo awal buku kas: Rp 100.000");
-  expect(document.paragraphs).toContain("Sisa uang: Rp 1.550.000");
-  expect(document.paragraphs).toContain("29 transaksi · Semua periode");
+  expect(document.paragraphs).toContain("Saldo awal bulan: Rp 600.000");
+  expect(document.paragraphs).toContain("Saldo akhir bulan: Rp 551.000");
+  expect(document.paragraphs).toContain("27 transaksi · Februari 2026 · Semua kategori");
+  await expect(table.locator("tbody tr")).toHaveCount(29);
   await page.screenshot({
     path: `artifacts/${testInfo.project.name}-word-export.png`,
     fullPage: true,
   });
 
+  await page.getByLabel("Kategori ekspor", { exact: true }).selectOption("Belanja");
+  const categoryRows = [
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["27/02/2026", "Catatan 27", "—", "75.000"],
+    ["Total kategori", "0", "75.000"],
+  ];
+  const categoryDocument = await downloadWord(page, "catat-uang-2026-02-Belanja.docx");
+  expect(categoryDocument.rows).toEqual(categoryRows);
+  expect(categoryDocument.paragraphs).toContain("Selisih kategori: -Rp 75.000");
+
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-03");
+  const empty = await downloadWord(page, "catat-uang-2026-03-Belanja.docx");
+  expect(empty.rows).toEqual([
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["Belum ada transaksi untuk pilihan ini."],
+    ["Total kategori", "0", "0"],
+  ]);
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-02");
+
   await page.getByRole("button", { name: "Buku kas", exact: true }).click();
-  await page.getByLabel("Bulan laporan").selectOption("2026-02");
+  await expect(page.getByLabel("Bulan laporan")).toHaveValue("2026-02");
+  await expect(page.getByLabel("Kategori ekspor", { exact: true })).toHaveValue(
+    "Belanja",
+  );
   await page.getByLabel("Cari transaksi").fill("Catatan 1");
-  await page.getByLabel("Filter jenis transaksi").selectOption("expense");
-  expect((await downloadWord(page)).rows).toEqual(expectedRows);
+  await page.getByLabel("Filter jenis transaksi").selectOption("income");
+  expect((await downloadWord(page, "catat-uang-2026-02-Belanja.docx")).rows).toEqual(
+    categoryRows,
+  );
 
   await page.getByRole("button", { name: "Laporan", exact: true }).click();
+  expect((await downloadWord(page, "catat-uang-2026-02-Belanja.docx")).rows).toEqual(
+    categoryRows,
+  );
+  const csvPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Unduh laporan CSV / Excel" }).click();
+  const csvDownload = await csvPromise;
+  expect(csvDownload.suggestedFilename()).toBe("catat-uang-2026-02-Belanja.csv");
+  const csv = await readFile((await csvDownload.path())!, "utf8");
+  expect(csv.split("\r\n")).toHaveLength(2);
+  expect(csv).toContain('"Catatan 27";"Belanja";"0";"75000";"551000"');
+  await page.getByLabel("Kategori ekspor", { exact: true }).selectOption("");
   expect((await downloadWord(page)).rows).toEqual(expectedRows);
-  await expect(
-    page.getByRole("button", { name: "Unduh laporan CSV / Excel" }),
-  ).toBeVisible();
+  await page.getByLabel("Bulan laporan").selectOption("2026-03");
+  const march = await downloadWord(page, "catat-uang-2026-03.docx");
+  expect(march.rows).toEqual([
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["01/03/2026", "Catatan 101", "999.000", "—"],
+    ["Total bulan ini", "999.000", "0"],
+  ]);
+  expect(march.paragraphs).toContain("Saldo akhir bulan: Rp 1.550.000");
+});
+
+test("ekspor Word mengenali kategori custom dan kategori yang sama pada pemasukan serta pengeluaran", async ({
+  page,
+}) => {
+  const data = createBook();
+  data.transactions = [
+    { ...createTransaction(1, "2025-02-01", 100_000), category: "Bahan / atap" },
+    { ...createTransaction(2, "2026-02-01", 50_000), category: "Bahan / atap" },
+    {
+      ...createTransaction(3, "2026-02-02", 20_000, "expense"),
+      category: "Bahan / atap",
+    },
+    createTransaction(4, "2026-02-03", 900_000),
+    { ...createTransaction(5, "2026-03-01", 100_000), category: "Bahan / atap" },
+  ];
+  await openTable(page, data);
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-02");
+  await page.getByLabel("Kategori ekspor", { exact: true }).selectOption("Bahan / atap");
+  const document = await downloadWord(page, "catat-uang-2026-02-Bahan-atap.docx");
+  expect(document.rows).toEqual([
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["01/02/2026", "Catatan 2", "50.000", "—"],
+    ["02/02/2026", "Catatan 3", "—", "20.000"],
+    ["Total kategori", "50.000", "20.000"],
+  ]);
+  expect(document.paragraphs).toContain("Februari 2026 · Bahan / atap");
+  expect(document.paragraphs).toContain("Selisih kategori: Rp 30.000");
 });
 
 test("Word tetap bisa diunduh untuk buku kosong", async ({ page }) => {
   const data = createBook();
   data.transactions = [];
   await openTable(page, data);
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-02");
   const document = await downloadWord(page);
   expect(document.rows).toEqual([
     ["Tanggal", "Keterangan", "Debit", "Kredit"],
-    ["Belum ada transaksi dalam buku kas."],
-    ["Total keseluruhan", "0", "0"],
+    ["Belum ada transaksi untuk pilihan ini."],
+    ["Total bulan ini", "0", "0"],
   ]);
-  expect(document.paragraphs).toContain("Sisa uang: Rp 100.000");
+  expect(document.paragraphs).toContain("Saldo akhir bulan: Rp 100.000");
 });
 
 test("kegagalan unduhan Word menampilkan pesan dan dapat dicoba kembali", async ({
   page,
 }) => {
   await openTable(page);
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-02");
   await page.evaluate(() => {
     const original = URL.createObjectURL.bind(URL);
     URL.createObjectURL = (...args) => {
@@ -124,7 +201,7 @@ test("kegagalan unduhan Word menampilkan pesan dan dapat dicoba kembali", async 
   await page.getByRole("button", { name: "Ekspor Word (.docx)", exact: true }).click();
   const alert = page.locator(".book-export").getByRole("alert");
   await expect(alert).toHaveText("Dokumen Word gagal dibuat. Coba ekspor kembali.");
-  expect((await downloadWord(page)).rows).toHaveLength(31);
+  expect((await downloadWord(page)).rows).toHaveLength(29);
   await expect(alert).toHaveCount(0);
 });
 
@@ -242,7 +319,7 @@ test("perubahan di Buku kas langsung tampil di Table View", async ({ page }) => 
   ).toContainText("Belanja dari Buku kas");
 });
 
-test("saldo awal yang dicatat sebagai debit tampil di bawah tabel tanpa dihitung dua kali", async ({
+test("debit berketerangan saldo awal tetap menjadi pemasukan tanpa menambah modal awal", async ({
   page,
 }, testInfo) => {
   const data = createBook();
@@ -254,12 +331,14 @@ test("saldo awal yang dicatat sebagai debit tampil di bawah tabel tanpa dihitung
   ];
   await openTable(page, data);
   await expect(page.locator(".cash-table tbody tr").first()).toContainText("301.000.000");
-  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 301.000.000");
-  await expect(page.getByTestId("table-other-income")).toHaveText("Rp 4.000.000");
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 0");
+  await expect(page.getByTestId("table-income")).toHaveText("Rp 305.000.000");
   await expect(page.getByTestId("table-total-debit")).toHaveText("305.000.000");
   await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 173.342.500");
-  await expect(page.locator(".cash-table-balance")).toContainText("Uang masuk lainnya");
-  await expect(page.locator(".cash-table-opening-note")).toContainText("dihitung sekali");
+  await expect(page.locator(".cash-table-balance")).toContainText("Uang masuk");
+  await expect(page.locator(".cash-table-opening-note")).toContainText(
+    "tidak menambah modal awal",
+  );
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
   ).toBe(false);
@@ -277,12 +356,13 @@ test("saldo awal yang dicatat sebagai debit tampil di bawah tabel tanpa dihitung
   await dialog.getByRole("button", { name: "Simpan transaksi" }).click();
   await expect(dialog).not.toBeVisible();
   await page.getByRole("button", { name: "Table View", exact: true }).click();
-  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 302.000.000");
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 0");
+  await expect(page.getByTestId("table-income")).toHaveText("Rp 306.000.000");
   await expect(page.getByTestId("table-total-debit")).toHaveText("306.000.000");
   await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 174.342.500");
 });
 
-test("saldo awal dari Pengaturan dan transaksi ditampilkan dengan sumber yang jelas", async ({
+test("modal awal dari Pengaturan terpisah dari debit di tabel dan ekspor Word", async ({
   page,
 }) => {
   const data = createBook();
@@ -291,16 +371,25 @@ test("saldo awal dari Pengaturan dan transaksi ditampilkan dengan sumber yang je
     createTransaction(2, "2026-07-21", 75_000, "expense"),
   ];
   await openTable(page, data);
-  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 600.000");
-  await expect(page.getByTestId("table-other-income")).toHaveText("Rp 0");
+  await expect(page.getByTestId("table-opening-balance")).toHaveText("Rp 100.000");
+  await expect(page.getByTestId("table-income")).toHaveText("Rp 500.000");
   await expect(page.getByTestId("table-total-debit")).toHaveText("500.000");
   await expect(page.getByTestId("table-remaining-balance")).toHaveText("Rp 525.000");
   await expect(page.locator(".cash-table-opening-note")).toContainText(
-    "Rp 100.000 dari Pengaturan",
+    "Modal awal berasal dari saldo awal di Pengaturan",
   );
   await expect(page.locator(".cash-table-opening-note")).toContainText(
-    "Rp 500.000 dari transaksi",
+    "tidak menambah modal awal",
   );
+  await page.getByLabel("Bulan ekspor", { exact: true }).selectOption("2026-07");
+  const document = await downloadWord(page, "catat-uang-2026-07.docx");
+  expect(document.paragraphs).toContain("Saldo awal bulan: Rp 100.000");
+  expect(document.paragraphs).toContain("Uang masuk: Rp 500.000");
+  expect(document.paragraphs).toContain("Saldo akhir bulan: Rp 525.000");
+  expect(document.rows.at(-1)).toEqual(["Total bulan ini", "500.000", "75.000"]);
+
+  await page.getByRole("button", { name: "Pengaturan", exact: true }).click();
+  await expect(page.getByLabel("Nominal dalam rupiah")).toHaveValue("100.000");
 });
 
 test("nominal besar dan sisa negatif tetap terbaca pada layar 320px", async ({

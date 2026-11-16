@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { createBookDocument } from "../../src/lib/document-export";
 import { MAX_AMOUNT, MAX_TRANSACTIONS } from "../../src/lib/constants";
 import { formatMoney, formatNumber } from "../../src/lib/format";
+import { createCsv } from "../../src/lib/backup";
+import { getExportFilename } from "../../src/lib/export";
 import type { BookData, Transaction } from "../../src/lib/types";
 import { readDocx } from "../helpers/docx";
 
@@ -27,8 +29,8 @@ function book(transactions: Transaction[] = []): BookData {
   };
 }
 
-async function exportBook(data: BookData) {
-  const document = await createBookDocument(data);
+async function exportBook(data: BookData, month = "2026-02", category = "") {
+  const document = await createBookDocument(data, month, category);
   assert.equal(
     document.type,
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -36,7 +38,7 @@ async function exportBook(data: BookData) {
   return readDocx(new Uint8Array(await document.arrayBuffer()));
 }
 
-test("Word memuat empat kolom dan semua periode dalam urutan Table View tanpa mengubah data", async () => {
+test("Word hanya memuat bulan pilihan dalam urutan Table View dan membawa saldo sebelumnya", async () => {
   const data = book([
     transaction(4, { date: "2027-01-01", amount: 500_000 }),
     transaction(3, { kind: "expense", amount: 75_000 }),
@@ -47,16 +49,14 @@ test("Word memuat empat kolom dan semua periode dalam urutan Table View tanpa me
   const document = await exportBook(data);
   assert.deepEqual(document.rows, [
     ["Tanggal", "Keterangan", "Debit", "Kredit"],
-    ["31/12/2025", "Catatan 1", "200.000", "—"],
     ["01/02/2026", "Catatan 2", "1.000", "—"],
     ["01/02/2026", "Catatan 3", "—", "75.000"],
-    ["01/01/2027", "Catatan 4", "500.000", "—"],
-    ["Total keseluruhan", "701.000", "75.000"],
+    ["Total bulan ini", "1.000", "75.000"],
   ]);
   assert.ok(document.paragraphs.includes("Buku keluarga"));
-  assert.ok(document.paragraphs.includes("4 transaksi · Semua periode"));
-  assert.ok(document.paragraphs.includes("Saldo awal buku kas: Rp 100.000"));
-  assert.ok(document.paragraphs.includes("Sisa uang: Rp 726.000"));
+  assert.ok(document.paragraphs.includes("2 transaksi · Februari 2026 · Semua kategori"));
+  assert.ok(document.paragraphs.includes("Saldo awal bulan: Rp 300.000"));
+  assert.ok(document.paragraphs.includes("Saldo akhir bulan: Rp 226.000"));
   assert.match(document.xml, /<w:tblHeader\b/);
   assert.deepEqual(data, before);
 });
@@ -65,11 +65,11 @@ test("Word menampilkan buku kosong beserta saldo awal dan total nol", async () =
   const document = await exportBook(book());
   assert.deepEqual(document.rows, [
     ["Tanggal", "Keterangan", "Debit", "Kredit"],
-    ["Belum ada transaksi dalam buku kas."],
-    ["Total keseluruhan", "0", "0"],
+    ["Belum ada transaksi untuk pilihan ini."],
+    ["Total bulan ini", "0", "0"],
   ]);
-  assert.ok(document.paragraphs.includes("0 transaksi · Semua periode"));
-  assert.ok(document.paragraphs.includes("Sisa uang: Rp 100.000"));
+  assert.ok(document.paragraphs.includes("0 transaksi · Februari 2026 · Semua kategori"));
+  assert.ok(document.paragraphs.includes("Saldo akhir bulan: Rp 100.000"));
 });
 
 test("saldo awal dari Pengaturan dan debit dihitung sekali dalam dokumen Word", async () => {
@@ -80,15 +80,10 @@ test("saldo awal dari Pengaturan dan debit dihitung sekali dalam dokumen Word", 
       transaction(3, { kind: "expense", amount: 75_000 }),
     ]),
   );
-  assert.deepEqual(document.rows.at(-1), ["Total keseluruhan", "525.000", "75.000"]);
-  assert.ok(document.paragraphs.includes("Saldo awal buku kas: Rp 600.000"));
-  assert.ok(document.paragraphs.includes("Uang masuk lainnya: Rp 25.000"));
-  assert.ok(document.paragraphs.includes("Sisa uang: Rp 550.000"));
-  assert.ok(
-    document.paragraphs.some((text) =>
-      text.includes("Rp 100.000 dari Pengaturan dan Rp 500.000 dari transaksi"),
-    ),
-  );
+  assert.deepEqual(document.rows.at(-1), ["Total bulan ini", "525.000", "75.000"]);
+  assert.ok(document.paragraphs.includes("Saldo awal bulan: Rp 100.000"));
+  assert.ok(document.paragraphs.includes("Uang masuk: Rp 525.000"));
+  assert.ok(document.paragraphs.includes("Saldo akhir bulan: Rp 550.000"));
 });
 
 test("karakter XML, Unicode, keterangan panjang, dan baris baru tetap utuh di Word", async () => {
@@ -101,7 +96,9 @@ test("karakter XML, Unicode, keterangan panjang, dan baris baru tetap utuh di Wo
   assert.equal(document.rows[1][1], description);
   assert.ok(document.paragraphs.includes(data.settings.name));
   assert.ok(
-    document.paragraphs.includes(`Sisa uang: ${formatMoney(100_000 - MAX_AMOUNT)}`),
+    document.paragraphs.includes(
+      `Saldo akhir bulan: ${formatMoney(100_000 - MAX_AMOUNT)}`,
+    ),
   );
 });
 
@@ -116,8 +113,61 @@ test("ekspor Word tidak memotong buku dengan batas maksimum 5000 transaksi", asy
   assert.equal(document.rows[1][1], "Catatan 0");
   assert.equal(document.rows.at(-2)?.[1], "Catatan 4999");
   assert.deepEqual(document.rows.at(-1), [
-    "Total keseluruhan",
+    "Total bulan ini",
     formatNumber(MAX_AMOUNT * MAX_TRANSACTIONS),
     "0",
   ]);
+});
+
+test("kategori membatasi Word dan CSV pada bulan yang dipilih untuk kedua jenis transaksi", async () => {
+  const data = book([
+    transaction(1, { date: "2025-02-01", amount: 200_000 }),
+    transaction(2, { amount: 25_000 }),
+    transaction(3, { kind: "expense", amount: 10_000 }),
+    transaction(4, { category: "Gaji tambahan", amount: 900_000 }),
+    transaction(5, { date: "2026-03-01", amount: 500_000 }),
+  ]);
+  const document = await exportBook(data, "2026-02", "Gaji");
+  assert.deepEqual(document.rows, [
+    ["Tanggal", "Keterangan", "Debit", "Kredit"],
+    ["01/02/2026", "Catatan 2", "25.000", "—"],
+    ["01/02/2026", "Catatan 3", "—", "10.000"],
+    ["Total kategori", "25.000", "10.000"],
+  ]);
+  assert.ok(document.paragraphs.includes("2 transaksi · Februari 2026 · Gaji"));
+  assert.ok(document.paragraphs.includes("Selisih kategori: Rp 15.000"));
+  assert.ok(!document.paragraphs.some((text) => text.startsWith("Saldo awal")));
+  const csv = createCsv(data, "2026-02", "Gaji");
+  assert.equal(csv.split("\r\n").length, 3);
+  assert.ok(csv.includes('"Catatan 2";"Gaji";"25000";"0";"325000"'));
+  assert.ok(csv.includes('"Catatan 3";"Gaji";"0";"10000";"315000"'));
+});
+
+test("bulan atau kategori tanpa kecocokan menghasilkan file kosong tanpa memperluas pilihan", async () => {
+  const data = book([
+    transaction(1, { date: "2026-01-01", amount: 200_000 }),
+    transaction(2, { amount: 25_000 }),
+  ]);
+  const category = "Bahan / atap & renovasi";
+  const emptyCategory = await exportBook(data, "2026-02", category);
+  assert.deepEqual(emptyCategory.rows.at(-1), ["Total kategori", "0", "0"]);
+  assert.ok(emptyCategory.paragraphs.includes("Selisih kategori: Rp 0"));
+  assert.ok(emptyCategory.paragraphs.includes(`Februari 2026 · ${category}`));
+  assert.equal(createCsv(data, "2026-02", category).split("\r\n").length, 1);
+  const emptyMonth = await exportBook(data, "2026-03");
+  assert.equal(emptyMonth.rows.length, 3);
+  assert.ok(emptyMonth.paragraphs.includes("Saldo awal bulan: Rp 325.000"));
+  assert.ok(emptyMonth.paragraphs.includes("Saldo akhir bulan: Rp 325.000"));
+});
+
+test("nama file menyebut bulan dan kategori dengan karakter yang aman", () => {
+  assert.equal(getExportFilename("2026-02", "", "docx"), "catat-uang-2026-02.docx");
+  assert.equal(
+    getExportFilename("2026-02", 'Bahan / atap: "utama"?', "docx"),
+    "catat-uang-2026-02-Bahan-atap-utama.docx",
+  );
+  assert.equal(
+    getExportFilename("2026-03", "Gaji", "csv"),
+    "catat-uang-2026-03-Gaji.csv",
+  );
 });

@@ -2,6 +2,7 @@ import type { BookBackup, BookData } from "./types";
 import { buildLedger } from "./ledger";
 import { MAX_BACKUP_BYTES } from "./constants";
 import { backupSchema } from "./validation";
+import { filterExportTransactions } from "./export";
 
 export function createBackup(data: BookData): BookBackup {
   return {
@@ -37,7 +38,7 @@ export function escapeCsvCell(value: string | number): string {
   return `"${safeValue.replaceAll('"', '""')}"`;
 }
 
-export function createCsv(data: BookData, month: string): string {
+export function createCsv(data: BookData, month: string, category = ""): string {
   const header = [
     "Tanggal",
     "Keterangan",
@@ -46,16 +47,16 @@ export function createCsv(data: BookData, month: string): string {
     "Uang keluar",
     "Saldo",
   ];
-  const rows = buildLedger(data)
-    .filter((item) => item.date.startsWith(month))
-    .map((item) => [
+  const rows = filterExportTransactions(buildLedger(data), month, category).map(
+    (item) => [
       item.date,
       item.description,
       item.category,
       item.kind === "income" ? item.amount : 0,
       item.kind === "expense" ? item.amount : 0,
       item.balance,
-    ]);
+    ],
+  );
 
   return (
     "\uFEFF" +

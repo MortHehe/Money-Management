@@ -1,20 +1,29 @@
 import { Wallet } from "lucide-react";
 import { formatMoney, formatNumber, formatTableDate } from "@/lib/format";
-import { compareTransactions, summarizeTable } from "@/lib/ledger";
+import { compareTransactions, summarizeBook } from "@/lib/ledger";
 import type { BookData } from "@/lib/types";
 import { BookExportButton } from "./book-export-button";
 
 interface TableViewProps {
   data: BookData;
   busy: boolean;
+  month: string;
+  onMonthChange: (month: string) => void;
+  exportCategory: string;
+  onExportCategoryChange: (category: string) => void;
 }
 
-export function TableView({ data, busy }: TableViewProps) {
+export function TableView({
+  data,
+  busy,
+  month,
+  onMonthChange,
+  exportCategory,
+  onExportCategoryChange,
+}: TableViewProps) {
   // Salin sebelum mengurutkan agar urutan data bersama di Buku kas tetap utuh.
   const rows = [...data.transactions].sort(compareTransactions);
-  const summary = summarizeTable(data);
-  const hasOpeningTransaction = summary.openingFromTransactions > 0;
-  const incomeLabel = hasOpeningTransaction ? "Uang masuk lainnya" : "Uang masuk";
+  const summary = summarizeBook(data);
 
   return (
     <section className="panel cash-table-panel" aria-labelledby="cash-table-title">
@@ -23,7 +32,14 @@ export function TableView({ data, busy }: TableViewProps) {
           <h2 id="cash-table-title">Seluruh transaksi</h2>
           <p>Debit = uang masuk · Kredit = uang keluar</p>
         </div>
-        <BookExportButton data={data} disabled={busy} />
+        <BookExportButton
+          data={data}
+          month={month}
+          category={exportCategory}
+          onCategoryChange={onExportCategoryChange}
+          onMonthChange={onMonthChange}
+          disabled={busy}
+        />
       </div>
 
       <p className="cash-table-hint" id="cash-table-hint">
@@ -106,21 +122,17 @@ export function TableView({ data, busy }: TableViewProps) {
         <p className="cash-table-opening">
           Saldo awal buku kas{" "}
           <strong data-testid="table-opening-balance">
-            {formatMoney(summary.openingTotal)}
+            {formatMoney(summary.opening)}
           </strong>
         </p>
-        {hasOpeningTransaction && (
-          <p className="cash-table-opening-note">
-            {summary.opening > 0
-              ? `Terdiri dari ${formatMoney(summary.opening)} dari Pengaturan dan ${formatMoney(summary.openingFromTransactions)} dari transaksi “Saldo awal”.`
-              : "Saldo awal berasal dari transaksi “Saldo awal” pada kolom debit."}{" "}
-            Saldo awal yang tercatat di debit dihitung sekali.
-          </p>
-        )}
+        <p className="cash-table-opening-note">
+          Modal awal berasal dari saldo awal di Pengaturan. Transaksi debit dicatat
+          sebagai uang masuk dan tidak menambah modal awal.
+        </p>
         <dl className="cash-table-breakdown">
           <div>
-            <dt>{incomeLabel}</dt>
-            <dd data-testid="table-other-income">{formatMoney(summary.otherIncome)}</dd>
+            <dt>Uang masuk</dt>
+            <dd data-testid="table-income">{formatMoney(summary.income)}</dd>
           </div>
           <div>
             <dt>Uang keluar</dt>
@@ -135,9 +147,7 @@ export function TableView({ data, busy }: TableViewProps) {
             {formatMoney(summary.closing)}
           </strong>
         </div>
-        <p>
-          Sisa uang = saldo awal buku kas + {incomeLabel.toLowerCase()} − uang keluar.
-        </p>
+        <p>Sisa uang = saldo awal buku kas + uang masuk − uang keluar.</p>
       </div>
     </section>
   );
